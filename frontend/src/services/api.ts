@@ -175,4 +175,24 @@ export const updateSettings = async (data: Partial<Settings>): Promise<Settings>
   return response.data;
 };
 
+// ============ UŻYTKOWNICY ============
+
+export const changePassword = async (data: { current_password: string; new_password: string; confirm_password: string }): Promise<void> => {
+  await apiClient.post('/auth/change-password/', data);
+};
+
+export const fetchUsers = async (): Promise<User[]> => {
+  const response = await apiClient.get('/auth/users/');
+  return response.data;
+};
+
+export const createUser = async (data: { username: string; email: string; password: string; first_name?: string; last_name?: string }): Promise<User> => {
+  const response = await apiClient.post('/auth/users/create/', data);
+  return response.data;
+};
+
+export const deleteUser = async (userId: number): Promise<void> => {
+  await apiClient.delete(`/auth/users/${userId}/delete/`);
+};
+
 export default apiClient;

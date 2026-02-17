@@ -97,6 +97,25 @@ export interface User {
   email: string;
   first_name?: string;
   last_name?: string;
+  is_active?: boolean;
+  is_staff?: boolean;
+  date_joined?: string;
+}
+
+// Formularz nowego użytkownika
+export interface UserFormData {
+  username: string;
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+// Zmiana hasła
+export interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 // Tokeny JWT
