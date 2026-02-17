@@ -1,66 +1,101 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { User } from '../types';
+import { login as apiLogin, logout as apiLogout, fetchCurrentUser, isAuthenticated, getStoredUser } from '../services/api';
+
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  isLoggedIn: boolean;
+}
 
 const useAuth = () => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [state, setState] = useState<AuthState>({
+    user: getStoredUser(),
+    loading: true,
+    error: null,
+    isLoggedIn: isAuthenticated(),
+  });
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const response = await fetch('/api/auth/user');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch user');
-                }
-                const data = await response.json();
-                setUser(data);
-            } catch (err) {
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchUser();
-    }, []);
-
-    const login = async (credentials) => {
-        setLoading(true);
+  // Sprawdź sesję przy starcie
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (isAuthenticated()) {
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(credentials),
-            });
-            if (!response.ok) {
-                throw new Error('Login failed');
-            }
-            const data = await response.json();
-            setUser(data);
-        } catch (err) {
-            setError(err);
-        } finally {
-            setLoading(false);
+          const user = await fetchCurrentUser();
+          localStorage.setItem('user', JSON.stringify(user));
+          setState({
+            user,
+            loading: false,
+            error: null,
+            isLoggedIn: true,
+          });
+        } catch (error) {
+          // Token nieważny
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          setState({
+            user: null,
+            loading: false,
+            error: null,
+            isLoggedIn: false,
+          });
         }
+      } else {
+        setState({
+          user: null,
+          loading: false,
+          error: null,
+          isLoggedIn: false,
+        });
+      }
     };
 
-    const logout = async () => {
-        setLoading(true);
-        try {
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-            });
-            setUser(null);
-        } catch (err) {
-            setError(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    checkAuth();
+  }, []);
 
-    return { user, loading, error, login, logout };
+  const login = useCallback(async (username: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const { user } = await apiLogin(username, password);
+      setState({
+        user,
+        loading: false,
+        error: null,
+        isLoggedIn: true,
+      });
+      return true;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Błąd logowania';
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }));
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true }));
+    await apiLogout();
+    setState({
+      user: null,
+      loading: false,
+      error: null,
+      isLoggedIn: false,
+    });
+  }, []);
+
+  return {
+    user: state.user,
+    loading: state.loading,
+    error: state.error,
+    isLoggedIn: state.isLoggedIn,
+    login,
+    logout,
+  };
 };
 
 export default useAuth;

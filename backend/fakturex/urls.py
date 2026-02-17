@@ -18,5 +18,5 @@ urlpatterns = [
     path('api/', api_root, name='api-root'),
     path('api/invoices/', include('invoices.urls')),
     path('api/', include('customers.urls')),  # contractors/ i settings/
-    path('api/users/', include('users.urls')),
+    path('api/auth/', include('users.urls')),  # login, logout, me, refresh
 ]

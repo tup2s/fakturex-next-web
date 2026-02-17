@@ -1,7 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthContext } from '../../App';
 
 const Navbar: React.FC = () => {
+    const { user, logout } = useAuthContext();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
+
     return (
         <nav className="navbar">
             <Link to="/" className="navbar-brand">
@@ -13,8 +22,15 @@ const Navbar: React.FC = () => {
                 </svg>
                 <span>Fakturex Next</span>
             </Link>
-            <div className="navbar-info">
-                Zarządzanie fakturami kosztowymi
+            <div className="navbar-user">
+                {user && (
+                    <>
+                        <span className="user-name">{user.first_name || user.username}</span>
+                        <button className="btn-logout" onClick={handleLogout}>
+                            Wyloguj
+                        </button>
+                    </>
+                )}
             </div>
         </nav>
     );

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Invoice, InvoiceFormData, Contractor, ContractorFormData, Settings, InvoiceStats } from '../types';
+import { Invoice, InvoiceFormData, Contractor, ContractorFormData, Settings, InvoiceStats, User, AuthTokens } from '../types';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
@@ -7,6 +7,94 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Interceptor - dodaj token do każdego requestu
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Interceptor - auto-refresh tokenu przy 401
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/auth/refresh/`,
+            { refresh: refreshToken }
+          );
+          
+          const { access } = response.data;
+          localStorage.setItem('access_token', access);
+          
+          originalRequest.headers.Authorization = `Bearer ${access}`;
+          return apiClient(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed - wyloguj użytkownika
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// ============ AUTENTYKACJA ============
+
+export const login = async (username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> => {
+  const response = await apiClient.post('/auth/login/', { username, password });
+  const { access, refresh, user } = response.data;
+  
+  localStorage.setItem('access_token', access);
+  localStorage.setItem('refresh_token', refresh);
+  localStorage.setItem('user', JSON.stringify(user));
+  
+  return { user, tokens: { access, refresh } };
+};
+
+export const logout = async (): Promise<void> => {
+  const refreshToken = localStorage.getItem('refresh_token');
+  try {
+    await apiClient.post('/auth/logout/', { refresh: refreshToken });
+  } catch (error) {
+    // Ignoruj błędy wylogowania
+  }
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+};
+
+export const fetchCurrentUser = async (): Promise<User> => {
+  const response = await apiClient.get('/auth/me/');
+  return response.data;
+};
+
+export const isAuthenticated = (): boolean => {
+  return !!localStorage.getItem('access_token');
+};
+
+export const getStoredUser = (): User | null => {
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
 
 // ============ FAKTURY ============
 
@@ -84,13 +172,6 @@ export const fetchSettings = async (): Promise<Settings> => {
 
 export const updateSettings = async (data: Partial<Settings>): Promise<Settings> => {
   const response = await apiClient.patch('/settings/', data);
-  return response.data;
-};
-
-// ============ UŻYTKOWNICY ============
-
-export const fetchUsers = async () => {
-  const response = await apiClient.get('/users/');
   return response.data;
 };
 
