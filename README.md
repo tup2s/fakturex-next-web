@@ -1,131 +1,184 @@
 # Fakturex Next
 
-Fakturex Next is a web application designed for managing invoices, customers, and products. This project is structured into a backend built with Django and a frontend built with React.
+Aplikacja webowa do zarządzania fakturami, klientami i produktami. Backend w Django, frontend w React.
 
-## Project Structure
+## Struktura projektu
 
 ```
-fakturex-next-web
-├── backend
-│   ├── fakturex
-│   ├── invoices
-│   ├── customers
-│   ├── products
-│   ├── users
+fakturex-next-web/
+├── backend/          ← Django REST API
+│   ├── fakturex/     ← Główna konfiguracja
+│   ├── invoices/     ← Moduł faktur
+│   ├── customers/    ← Moduł klientów
+│   ├── products/     ← Moduł produktów
+│   ├── users/        ← Moduł użytkowników
 │   ├── manage.py
 │   └── requirements.txt
-├── frontend
-│   ├── src
-│   ├── public
+├── frontend/         ← React + Vite
+│   ├── src/
+│   ├── index.html
 │   ├── package.json
-│   ├── tsconfig.json
 │   └── vite.config.ts
-├── .gitignore
-├── docker-compose.yml
-└── README.md
+└── docker-compose.yml
 ```
 
-## Backend
+---
 
-The backend is built using Django and provides RESTful APIs for managing invoices, customers, products, and users. 
+## Uruchomienie lokalne
 
-### Setup
+### Backend
 
-1. Navigate to the `backend` directory.
-2. Install the required packages:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Run the migrations:
-   ```
-   python manage.py migrate
-   ```
-4. Start the development server:
-   ```
-   python manage.py runserver
-   ```
+```bash
+cd backend
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+Backend działa na: http://localhost:8000
 
-## Frontend
+### Frontend
 
-The frontend is built using React and Vite. It provides a user-friendly interface for interacting with the backend APIs.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend działa na: http://localhost:3000
 
-### Setup
+---
 
-1. Navigate to the `frontend` directory.
-2. Install the required packages:
-   ```
-   npm install
-   ```
-3. Start the development server:
-   ```
-   npm run dev
-   ```
+## Wdrożenie na Railway (krok po kroku)
 
-## Features
-
-- Manage invoices, customers, and products.
-- User authentication and authorization.
-- Responsive design for mobile and desktop.
-
-## Deployment on Railway
-
-### Prerequisites
+### Wymagania
 - Konto na [Railway](https://railway.app)
-- Projekt jest w repozytorium Git (GitHub, GitLab, etc.)
+- Repozytorium na GitHub (już masz: https://github.com/tup2s/fakturex-next-web)
 
-### Kroki wdrożenia
+---
 
-#### 1. Utwórz nowy projekt na Railway
-1. Zaloguj się na [Railway](https://railway.app)
-2. Kliknij **New Project** → **Deploy from GitHub repo**
-3. Wybierz swoje repozytorium
+### KROK 1: Zaloguj się na Railway
 
-#### 2. Dodaj bazę danych PostgreSQL
-1. W projekcie kliknij **New** → **Database** → **PostgreSQL**
-2. Railway automatycznie ustawi zmienną `DATABASE_URL`
+1. Wejdź na https://railway.app
+2. Kliknij **Login** → zaloguj się przez GitHub
 
-#### 3. Skonfiguruj Backend
-1. Kliknij **New** → **GitHub Repo** → wybierz repo
-2. Ustaw **Root Directory**: `backend`
-3. Dodaj zmienne środowiskowe:
-   - `SECRET_KEY` - wygeneruj bezpieczny klucz
-   - `DEBUG` - `False`
-   - `ALLOWED_HOSTS` - `.railway.app`
-   - `CORS_ALLOWED_ORIGINS` - URL frontendu (np. `https://twoj-frontend.railway.app`)
-   - `CSRF_TRUSTED_ORIGINS` - URL frontendu i backendu
+---
 
-4. Railway automatycznie wykryje Django i użyje `Procfile`
+### KROK 2: Utwórz nowy projekt
 
-#### 4. Skonfiguruj Frontend
-1. Kliknij **New** → **GitHub Repo** → wybierz repo
-2. Ustaw **Root Directory**: `frontend`
-3. Dodaj zmienną środowiskową:
-   - `VITE_API_URL` - URL backendu (np. `https://twoj-backend.railway.app/api`)
+1. Kliknij **New Project**
+2. Wybierz **Empty Project** (pusty projekt)
 
-#### 5. Wygeneruj domeny
-1. Dla każdego serwisu: **Settings** → **Networking** → **Generate Domain**
-2. Zaktualizuj zmienne środowiskowe z rzeczywistymi URL-ami
+---
 
-### Zmienne środowiskowe
+### KROK 3: Dodaj bazę danych PostgreSQL
 
-#### Backend
-| Zmienna | Opis |
-|---------|------|
-| `SECRET_KEY` | Tajny klucz Django |
-| `DEBUG` | `False` dla produkcji |
-| `DATABASE_URL` | Automatycznie z PostgreSQL |
-| `CORS_ALLOWED_ORIGINS` | URL frontendu |
-| `CSRF_TRUSTED_ORIGINS` | Zaufane originy |
+1. W projekcie kliknij **+ New**
+2. Wybierz **Database** → **PostgreSQL**
+3. Gotowe! Railway automatycznie utworzy bazę
 
-#### Frontend
-| Zmienna | Opis |
-|---------|------|
-| `VITE_API_URL` | URL API backendu |
+---
 
-## Contributing
+### KROK 4: Dodaj Backend
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+1. Kliknij **+ New** → **GitHub Repo**
+2. Wybierz repozytorium `fakturex-next-web`
+3. **WAŻNE:** Po dodaniu, kliknij na serwis i przejdź do **Settings**
+4. W sekcji **Source** znajdź **Root Directory**
+5. Wpisz: `backend`
+6. Kliknij **Deploy** lub poczekaj na automatyczny deploy
 
-## License
+#### Zmienne środowiskowe dla Backend:
+W **Variables** dodaj:
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+| Zmienna | Wartość |
+|---------|---------|
+| `SECRET_KEY` | `twoj-tajny-klucz-123-wygeneruj-losowy` |
+| `DEBUG` | `False` |
+| `ALLOWED_HOSTS` | `.railway.app` |
+
+**Zmienne CORS/CSRF dodasz PO wygenerowaniu domeny frontendu (krok 6)**
+
+---
+
+### KROK 5: Dodaj Frontend
+
+1. Kliknij **+ New** → **GitHub Repo**
+2. Wybierz **to samo** repozytorium `fakturex-next-web`
+3. Przejdź do **Settings** nowego serwisu
+4. W **Root Directory** wpisz: `frontend`
+5. Poczekaj na deploy
+
+#### Zmienne środowiskowe dla Frontend:
+W **Variables** dodaj:
+
+| Zmienna | Wartość |
+|---------|---------|
+| `VITE_API_URL` | (dodasz w kroku 6) |
+
+---
+
+### KROK 6: Wygeneruj domeny publiczne
+
+Dla **każdego** serwisu (backend i frontend):
+
+1. Kliknij na serwis
+2. Idź do **Settings** → **Networking**
+3. Kliknij **Generate Domain**
+4. Skopiuj wygenerowany URL (np. `https://xxx.railway.app`)
+
+---
+
+### KROK 7: Zaktualizuj zmienne środowiskowe
+
+Teraz gdy masz domeny, wróć i uzupełnij:
+
+#### Backend (Variables):
+| Zmienna | Wartość |
+|---------|---------|
+| `CORS_ALLOWED_ORIGINS` | `https://twoj-frontend-xxx.railway.app` |
+| `CSRF_TRUSTED_ORIGINS` | `https://twoj-frontend-xxx.railway.app,https://twoj-backend-xxx.railway.app` |
+
+#### Frontend (Variables):
+| Zmienna | Wartość |
+|---------|---------|
+| `VITE_API_URL` | `https://twoj-backend-xxx.railway.app/api` |
+
+**Zamień `xxx` na rzeczywiste nazwy z Railway!**
+
+---
+
+### KROK 8: Połącz bazę danych z backendem
+
+1. Kliknij na serwis **Backend**
+2. W **Variables** kliknij **+ New Variable**
+3. Kliknij **Add Reference** → wybierz **PostgreSQL** → `DATABASE_URL`
+4. Railway automatycznie połączy bazę
+
+---
+
+### Gotowe!
+
+Po wykonaniu wszystkich kroków:
+- Frontend: `https://twoj-frontend-xxx.railway.app`
+- Backend API: `https://twoj-backend-xxx.railway.app/api/`
+- Admin Django: `https://twoj-backend-xxx.railway.app/admin/`
+
+---
+
+## Rozwiązywanie problemów
+
+### Build się nie udaje?
+- Sprawdź w **Deployments** → kliknij na deployment → zobacz logi
+- Upewnij się że **Root Directory** jest ustawiony poprawnie
+
+### Frontend nie łączy się z API?
+- Sprawdź czy `VITE_API_URL` ma poprawny URL backendu
+- Sprawdź czy `CORS_ALLOWED_ORIGINS` zawiera URL frontendu
+
+### Baza danych nie działa?
+- Sprawdź czy `DATABASE_URL` jest dodane jako Reference do PostgreSQL
+
+---
+
+## Licencja
+
+MIT License
