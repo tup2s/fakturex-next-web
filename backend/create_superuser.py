@@ -9,16 +9,38 @@ from customers.models import Settings
 
 User = get_user_model()
 
-# Utwórz użytkownika krzysztof
+# Pokaż istniejących użytkowników
+print("=== Existing users ===")
+for u in User.objects.all():
+    print(f"  - {u.username} (id={u.id}, is_superuser={u.is_superuser})")
+
+# Utwórz lub zaktualizuj użytkownika krzysztof
 username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'krzysztof')
 email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'krzysztof@fakturex.pl')
 password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'magia2')
 
-if not User.objects.filter(username=username).exists():
-    User.objects.create_superuser(username=username, email=email, password=password)
-    print(f'Superuser {username} created')
+user, created = User.objects.get_or_create(username=username, defaults={
+    'email': email,
+    'is_staff': True,
+    'is_superuser': True,
+})
+
+if created:
+    user.set_password(password)
+    user.save()
+    print(f'Superuser {username} created with password')
 else:
-    print(f'Superuser {username} already exists')
+    # Zawsze resetuj hasło do domyślnego
+    user.set_password(password)
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+    print(f'Superuser {username} already exists - password reset to default')
+
+# Pokaż użytkowników po zmianach
+print("=== Users after setup ===")
+for u in User.objects.all():
+    print(f"  - {u.username} (id={u.id}, is_superuser={u.is_superuser})")
 
 # Utwórz domyślne ustawienia jeśli nie istnieją
 if not Settings.objects.exists():
