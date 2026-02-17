@@ -18,7 +18,3 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'is_overdue', 'days_until_due', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
-            for item_data in items_data:
-                InvoiceItem.objects.create(invoice=instance, **item_data)
-        
-        return instance
