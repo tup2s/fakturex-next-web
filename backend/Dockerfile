@@ -20,4 +20,4 @@ RUN SECRET_KEY=temp-build-key python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Run migrations and start server (secrets provided via runtime environment)
-CMD ["sh", "-c", "echo 'Running migrations...' && python manage.py migrate --verbosity 2 && echo 'Creating superuser...' && python create_superuser.py && echo 'Starting server...' && gunicorn fakturex.wsgi --bind 0.0.0.0:${PORT:-8000}"]
+CMD ["sh", "-c", "set -e && echo '=== Starting Fakturex Backend ===' && python check_db.py && echo '=== Running migrations ===' && python manage.py showmigrations && python manage.py migrate --verbosity 2 && echo '=== Migrations complete ===' && python check_db.py && echo '=== Creating superuser ===' && python create_superuser.py && echo '=== Starting Gunicorn ===' && gunicorn fakturex.wsgi --bind 0.0.0.0:${PORT:-8000}"]
