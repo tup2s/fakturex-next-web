@@ -1,32 +1,49 @@
 from django.contrib import admin
-from .models import Customer
+from .models import Contractor, Settings
 
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ['display_name', 'customer_type', 'nip', 'email', 'phone', 'city']
-    list_filter = ['customer_type', 'city']
-    search_fields = ['company_name', 'first_name', 'last_name', 'nip', 'email']
+@admin.register(Contractor)
+class ContractorAdmin(admin.ModelAdmin):
+    list_display = ['nazwa', 'nip', 'miasto', 'email', 'telefon']
+    list_filter = ['miasto', 'kraj']
+    search_fields = ['nazwa', 'nip', 'email']
+    ordering = ['nazwa']
     
     fieldsets = (
-        ('Typ klienta', {
-            'fields': ('customer_type',)
-        }),
-        ('Dane firmy', {
-            'fields': ('company_name', 'nip'),
-            'classes': ('collapse',)
-        }),
-        ('Dane osobowe', {
-            'fields': ('first_name', 'last_name')
-        }),
-        ('Kontakt', {
-            'fields': ('email', 'phone')
+        ('Dane kontrahenta', {
+            'fields': ('nazwa', 'nip')
         }),
         ('Adres', {
-            'fields': ('street', 'postal_code', 'city', 'country')
+            'fields': ('ulica', 'kod_pocztowy', 'miasto', 'kraj')
+        }),
+        ('Kontakt', {
+            'fields': ('email', 'telefon')
         }),
         ('Notatki', {
-            'fields': ('notes',),
+            'fields': ('notatki',),
             'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(Settings)
+class SettingsAdmin(admin.ModelAdmin):
+    list_display = ['firma_nazwa', 'firma_nip', 'ksef_environment', 'auto_fetch_ksef']
+    
+    fieldsets = (
+        ('Dane firmy', {
+            'fields': ('firma_nazwa', 'firma_nip')
+        }),
+        ('KSeF', {
+            'fields': ('ksef_token', 'ksef_environment', 'auto_fetch_ksef')
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Tylko jeden rekord ustawień
+        return not Settings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        return False
         }),
     )

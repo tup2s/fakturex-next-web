@@ -1,148 +1,170 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchInvoices, fetchCustomers, fetchProducts } from '../services/api';
-import { Invoice, Customer, Product } from '../types';
-import './Dashboard.css';
+import { fetchInvoiceStats, fetchInvoices } from '../services/api';
+import { InvoiceStats, Invoice } from '../types';
 
 const Dashboard: React.FC = () => {
-    const [stats, setStats] = useState({
-        invoicesCount: 0,
-        customersCount: 0,
-        productsCount: 0,
-        totalRevenue: 0,
-        unpaidInvoices: 0,
-        recentInvoices: [] as Invoice[],
-    });
+    const [stats, setStats] = useState<InvoiceStats | null>(null);
+    const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadStats = async () => {
-            try {
-                const [invoices, customers, products] = await Promise.all([
-                    fetchInvoices(),
-                    fetchCustomers(),
-                    fetchProducts(),
-                ]);
-
-                const paidInvoices = invoices.filter((i: Invoice) => i.status === 'paid');
-                const unpaid = invoices.filter((i: Invoice) => 
-                    i.status === 'issued' || i.status === 'overdue'
-                );
-
-                setStats({
-                    invoicesCount: invoices.length,
-                    customersCount: customers.length,
-                    productsCount: products.length,
-                    totalRevenue: paidInvoices.reduce((sum: number, i: Invoice) => sum + i.total, 0),
-                    unpaidInvoices: unpaid.length,
-                    recentInvoices: invoices.slice(0, 5),
-                });
-            } catch (error) {
-                console.error('Błąd ładowania:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadStats();
+        loadData();
     }, []);
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' }).format(price);
+    const loadData = async () => {
+        try {
+            const [statsData, invoicesData] = await Promise.all([
+                fetchInvoiceStats(),
+                fetchInvoices()
+            ]);
+            setStats(statsData);
+            setRecentInvoices(invoicesData.slice(0, 5));
+        } catch (error) {
+            console.error('Błąd ładowania danych:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('pl-PL', {
+            style: 'currency',
+            currency: 'PLN'
+        }).format(amount);
     };
 
     if (loading) {
-        return <div className="dashboard loading">Ładowanie...</div>;
+        return (
+            <div className="page">
+                <div className="loading">
+                    <div className="spinner"></div>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="dashboard">
-            <h1>Panel główny</h1>
-            
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <div className="stat-icon">📄</div>
-                    <div className="stat-content">
-                        <h3>{stats.invoicesCount}</h3>
-                        <p>Faktury</p>
-                    </div>
-                    <Link to="/invoices" className="stat-link">Zobacz →</Link>
+        <div className="page">
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Panel główny</h1>
+                    <p className="page-subtitle">Podsumowanie faktur kosztowych</p>
                 </div>
-
-                <div className="stat-card">
-                    <div className="stat-icon">👥</div>
-                    <div className="stat-content">
-                        <h3>{stats.customersCount}</h3>
-                        <p>Klienci</p>
-                    </div>
-                    <Link to="/customers" className="stat-link">Zobacz →</Link>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-icon">📦</div>
-                    <div className="stat-content">
-                        <h3>{stats.productsCount}</h3>
-                        <p>Produkty</p>
-                    </div>
-                    <Link to="/products" className="stat-link">Zobacz →</Link>
-                </div>
-
-                <div className="stat-card highlight">
-                    <div className="stat-icon">💰</div>
-                    <div className="stat-content">
-                        <h3>{formatPrice(stats.totalRevenue)}</h3>
-                        <p>Przychód (zapłacone)</p>
-                    </div>
-                </div>
+                <Link to="/invoices" className="btn btn-primary">
+                    + Dodaj fakturę
+                </Link>
             </div>
 
-            {stats.unpaidInvoices > 0 && (
-                <div className="alert-box">
-                    ⚠️ Masz <strong>{stats.unpaidInvoices}</strong> niezapłaconych faktur.{' '}
-                    <Link to="/invoices">Sprawdź</Link>
+            {/* Alerty */}
+            {stats && stats.przeterminowane_count > 0 && (
+                <div className="alert alert-danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span>
+                        Masz <strong>{stats.przeterminowane_count}</strong> przeterminowanych faktur 
+                        na kwotę <strong>{formatCurrency(stats.suma_przeterminowanych)}</strong>
+                    </span>
                 </div>
             )}
 
-            <div className="dashboard-section">
-                <h2>Ostatnie faktury</h2>
-                {stats.recentInvoices.length === 0 ? (
-                    <p className="empty">Brak faktur. <Link to="/invoices">Utwórz pierwszą fakturę</Link></p>
-                ) : (
-                    <table className="simple-table">
-                        <thead>
-                            <tr>
-                                <th>Numer</th>
-                                <th>Klient</th>
-                                <th>Kwota</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {stats.recentInvoices.map((invoice) => (
-                                <tr key={invoice.id}>
-                                    <td>{invoice.invoice_number}</td>
-                                    <td>{invoice.customer_name}</td>
-                                    <td>{formatPrice(invoice.total)}</td>
-                                    <td>
-                                        <span className={`status ${invoice.status}`}>
-                                            {invoice.status === 'paid' ? 'Zapłacona' :
-                                             invoice.status === 'draft' ? 'Szkic' :
-                                             invoice.status === 'issued' ? 'Wystawiona' :
-                                             invoice.status === 'overdue' ? 'Przeterminowana' : invoice.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+            {stats && stats.blisko_terminu_count > 0 && (
+                <div className="alert alert-warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>
+                        <strong>{stats.blisko_terminu_count}</strong> faktur z terminem płatności w ciągu 3 dni
+                    </span>
+                </div>
+            )}
+
+            {/* Statystyki */}
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-value">{stats?.total_count || 0}</div>
+                    <div className="stat-label">Wszystkich faktur</div>
+                    <div className="stat-amount">{formatCurrency(stats?.suma_wszystkich || 0)}</div>
+                </div>
+
+                <div className="stat-card warning">
+                    <div className="stat-value">{stats?.niezaplacone_count || 0}</div>
+                    <div className="stat-label">Niezapłaconych</div>
+                    <div className="stat-amount">{formatCurrency(stats?.suma_niezaplaconych || 0)}</div>
+                </div>
+
+                <div className="stat-card danger">
+                    <div className="stat-value">{stats?.przeterminowane_count || 0}</div>
+                    <div className="stat-label">Przeterminowanych</div>
+                    <div className="stat-amount">{formatCurrency(stats?.suma_przeterminowanych || 0)}</div>
+                </div>
+
+                <div className="stat-card success">
+                    <div className="stat-value">{stats?.zaplacone_count || 0}</div>
+                    <div className="stat-label">Zapłaconych</div>
+                    <div className="stat-amount">{formatCurrency(stats?.suma_zaplaconych || 0)}</div>
+                </div>
             </div>
 
-            <div className="quick-actions">
-                <h2>Szybkie akcje</h2>
-                <div className="action-buttons">
-                    <Link to="/invoices" className="action-btn primary">+ Nowa faktura</Link>
-                    <Link to="/customers" className="action-btn">+ Nowy klient</Link>
-                    <Link to="/products" className="action-btn">+ Nowy produkt</Link>
+            {/* Ostatnie faktury */}
+            <div className="card">
+                <div className="card-header">
+                    <h2 className="card-title">Ostatnie faktury</h2>
+                    <Link to="/invoices" className="btn btn-sm btn-secondary">
+                        Zobacz wszystkie
+                    </Link>
+                </div>
+                <div className="card-body">
+                    {recentInvoices.length === 0 ? (
+                        <div className="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            <h3>Brak faktur</h3>
+                            <p>Dodaj pierwszą fakturę, aby rozpocząć</p>
+                        </div>
+                    ) : (
+                        <div className="table-container">
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Numer</th>
+                                        <th>Dostawca</th>
+                                        <th>Data</th>
+                                        <th>Termin</th>
+                                        <th style={{ textAlign: 'right' }}>Kwota</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentInvoices.map((invoice) => (
+                                        <tr key={invoice.id}>
+                                            <td><strong>{invoice.numer}</strong></td>
+                                            <td>{invoice.dostawca}</td>
+                                            <td>{invoice.data}</td>
+                                            <td>{invoice.termin_platnosci}</td>
+                                            <td className="amount">{formatCurrency(invoice.kwota)}</td>
+                                            <td>
+                                                <span className={`status ${
+                                                    invoice.is_overdue ? 'status-przeterminowana' :
+                                                    invoice.status === 'zaplacona' ? 'status-zaplacona' : 'status-niezaplacona'
+                                                }`}>
+                                                    {invoice.is_overdue ? 'Przeterminowana' :
+                                                     invoice.status === 'zaplacona' ? 'Zapłacona' : 'Niezapłacona'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,30 +1,34 @@
 from django.contrib import admin
-from .models import Invoice, InvoiceItem
-
-
-class InvoiceItemInline(admin.TabularInline):
-    model = InvoiceItem
-    extra = 1
-    fields = ['description', 'quantity', 'unit', 'unit_price', 'tax_rate', 'product']
+from .models import Invoice
 
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ['invoice_number', 'customer', 'issue_date', 'due_date', 'status', 'total']
-    list_filter = ['status', 'issue_date']
-    search_fields = ['invoice_number', 'customer__company_name', 'customer__last_name']
-    date_hierarchy = 'issue_date'
-    inlines = [InvoiceItemInline]
+    list_display = ['numer', 'dostawca', 'data', 'kwota', 'termin_platnosci', 'status', 'is_overdue']
+    list_filter = ['status', 'data', 'termin_platnosci']
+    search_fields = ['numer', 'dostawca', 'ksef_numer']
+    date_hierarchy = 'data'
+    list_editable = ['status']
+    ordering = ['-data']
     
     fieldsets = (
-        ('Podstawowe', {
-            'fields': ('invoice_number', 'customer', 'status')
+        ('Dane faktury', {
+            'fields': ('numer', 'dostawca', 'kontrahent', 'data', 'kwota')
         }),
-        ('Daty', {
-            'fields': ('issue_date', 'due_date')
+        ('Płatność', {
+            'fields': ('termin_platnosci', 'status')
         }),
-        ('Dodatkowe', {
-            'fields': ('notes',),
+        ('KSeF', {
+            'fields': ('ksef_numer', 'ksef_xml'),
+            'classes': ('collapse',)
+        }),
+        ('Notatki', {
+            'fields': ('notatki',),
             'classes': ('collapse',)
         }),
     )
+    
+    def is_overdue(self, obj):
+        return obj.is_overdue
+    is_overdue.boolean = True
+    is_overdue.short_description = 'Przeterminowana'

@@ -1,67 +1,59 @@
 from django.db import models
-from customers.models import Customer
-from products.models import Product
+from decimal import Decimal
+from datetime import date
 
 
 class Invoice(models.Model):
+    """
+    Model faktury kosztowej (od dostawcy).
+    Zgodny z oryginalną aplikacją Fakturex Next.
+    """
     STATUS_CHOICES = [
-        ('draft', 'Szkic'),
-        ('issued', 'Wystawiona'),
-        ('paid', 'Zapłacona'),
-        ('overdue', 'Przeterminowana'),
-        ('cancelled', 'Anulowana'),
+        ('niezaplacona', 'Niezapłacona'),
+        ('zaplacona', 'Zapłacona'),
     ]
     
-    invoice_number = models.CharField(max_length=50, unique=True, verbose_name='Numer faktury')
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='invoices', verbose_name='Klient')
-    issue_date = models.DateField(verbose_name='Data wystawienia')
-    due_date = models.DateField(verbose_name='Termin płatności')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='Status')
-    notes = models.TextField(blank=True, verbose_name='Uwagi')
+    numer = models.CharField(max_length=100, verbose_name='Numer faktury')
+    data = models.DateField(verbose_name='Data faktury')
+    kwota = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Kwota brutto')
+    dostawca = models.CharField(max_length=255, verbose_name='Dostawca')
+    termin_platnosci = models.DateField(verbose_name='Termin płatności')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='niezaplacona', verbose_name='Status')
+    
+    # Opcjonalne powiązanie z kontrahentem
+    kontrahent = models.ForeignKey(
+        'customers.Contractor', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='faktury',
+        verbose_name='Kontrahent'
+    )
+    
+    # KSeF
+    ksef_numer = models.CharField(max_length=100, blank=True, verbose_name='Numer KSeF')
+    ksef_xml = models.TextField(blank=True, verbose_name='XML KSeF')
+    
+    notatki = models.TextField(blank=True, verbose_name='Notatki')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Faktura'
         verbose_name_plural = 'Faktury'
-        ordering = ['-issue_date', '-id']
+        ordering = ['-data', '-id']
 
     def __str__(self):
-        return f"{self.invoice_number} - {self.customer}"
+        return f"{self.numer} - {self.dostawca}"
 
     @property
-    def subtotal(self):
-        return sum(item.total for item in self.items.all())
+    def is_overdue(self):
+        """Czy faktura jest przeterminowana"""
+        if self.status == 'zaplacona':
+            return False
+        return date.today() > self.termin_platnosci
 
     @property
-    def tax_amount(self):
-        return sum(item.tax_amount for item in self.items.all())
-
-    @property
-    def total(self):
-        return self.subtotal + self.tax_amount
-
-
-class InvoiceItem(models.Model):
-    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, null=True, blank=True)
-    description = models.CharField(max_length=255, verbose_name='Opis')
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Ilość')
-    unit = models.CharField(max_length=20, default='szt.', verbose_name='Jednostka')
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Cena jednostkowa')
-    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=23.00, verbose_name='Stawka VAT %')
-
-    class Meta:
-        verbose_name = 'Pozycja faktury'
-        verbose_name_plural = 'Pozycje faktury'
-
-    def __str__(self):
-        return f"{self.description} x {self.quantity}"
-
-    @property
-    def total(self):
-        return self.quantity * self.unit_price
-
-    @property
-    def tax_amount(self):
-        return self.total * (self.tax_rate / 100)
+    def days_until_due(self):
+        """Dni do terminu płatności (ujemne = przeterminowana)"""
+        return (self.termin_platnosci - date.today()).days

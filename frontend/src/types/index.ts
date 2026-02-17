@@ -1,80 +1,93 @@
-// Klient
-export interface Customer {
-  id: number;
-  customer_type: 'individual' | 'company';
-  company_name: string;
-  first_name: string;
-  last_name: string;
-  nip: string;
-  email: string;
-  phone: string;
-  street: string;
-  city: string;
-  postal_code: string;
-  country: string;
-  notes: string;
-  display_name: string;
-  full_address: string;
-  created_at: string;
-  updated_at: string;
-}
+/**
+ * Typy dla aplikacji Fakturex Next Web
+ * Zarządzanie fakturami kosztowymi
+ */
 
-// Produkt/Usługa
-export interface Product {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  unit: string;
-  unit_price: number;
-  tax_rate: number;
-  tax_rate_display: string;
-  price_gross: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// Pozycja faktury
-export interface InvoiceItem {
-  id?: number;
-  product?: number;
-  description: string;
-  quantity: number;
-  unit: string;
-  unit_price: number;
-  tax_rate: number;
-  total?: number;
-  tax_amount?: number;
-}
-
-// Faktura
+// Faktura kosztowa (od dostawcy)
 export interface Invoice {
   id: number;
-  invoice_number: string;
-  customer: number;
-  customer_name: string;
-  issue_date: string;
-  due_date: string;
-  status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled';
-  notes: string;
-  items: InvoiceItem[];
-  subtotal: number;
-  tax_amount: number;
-  total: number;
+  numer: string;
+  data: string;
+  kwota: number;
+  dostawca: string;
+  termin_platnosci: string;
+  status: 'niezaplacona' | 'zaplacona';
+  kontrahent: number | null;
+  kontrahent_nazwa: string | null;
+  ksef_numer: string;
+  notatki: string;
+  is_overdue: boolean;
+  days_until_due: number;
   created_at: string;
   updated_at: string;
 }
 
-// Formularz tworzenia faktury
+// Formularz faktury
 export interface InvoiceFormData {
-  invoice_number: string;
-  customer: number | null;
-  issue_date: string;
-  due_date: string;
-  status: string;
-  notes: string;
-  items: InvoiceItem[];
+  numer: string;
+  data: string;
+  kwota: number | string;
+  dostawca: string;
+  termin_platnosci: string;
+  status: 'niezaplacona' | 'zaplacona';
+  kontrahent?: number | null;
+  ksef_numer?: string;
+  notatki?: string;
+}
+
+// Kontrahent/Dostawca
+export interface Contractor {
+  id: number;
+  nazwa: string;
+  nip: string;
+  ulica: string;
+  miasto: string;
+  kod_pocztowy: string;
+  kraj: string;
+  email: string;
+  telefon: string;
+  notatki: string;
+  pelny_adres: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Formularz kontrahenta
+export interface ContractorFormData {
+  nazwa: string;
+  nip?: string;
+  ulica?: string;
+  miasto?: string;
+  kod_pocztowy?: string;
+  kraj?: string;
+  email?: string;
+  telefon?: string;
+  notatki?: string;
+}
+
+// Ustawienia firmy
+export interface Settings {
+  id: number;
+  firma_nazwa: string;
+  firma_nip: string;
+  ksef_token: string;
+  ksef_environment: 'production' | 'test' | 'demo';
+  auto_fetch_ksef: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Statystyki dla dashboardu
+export interface InvoiceStats {
+  total_count: number;
+  zaplacone_count: number;
+  niezaplacone_count: number;
+  przeterminowane_count: number;
+  blisko_terminu_count: number;
+  suma_wszystkich: number;
+  suma_zaplaconych: number;
+  suma_niezaplaconych: number;
+  suma_przeterminowanych: number;
 }
 
 // Użytkownik

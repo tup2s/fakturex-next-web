@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Invoice, InvoiceFormData, Contractor, ContractorFormData, Settings, InvoiceStats } from '../types';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
@@ -7,82 +8,87 @@ const apiClient = axios.create({
   },
 });
 
-// Invoices
-export const fetchInvoices = async () => {
-  const response = await apiClient.get('/invoices/');
+// ============ FAKTURY ============
+
+export const fetchInvoices = async (params?: { status?: string; overdue?: string; dostawca?: string }): Promise<Invoice[]> => {
+  const response = await apiClient.get('/invoices/', { params });
   return response.data;
 };
 
-export const createInvoice = async (invoiceData: any) => {
-  const response = await apiClient.post('/invoices/', invoiceData);
+export const fetchInvoiceStats = async (): Promise<InvoiceStats> => {
+  const response = await apiClient.get('/invoices/stats/');
   return response.data;
 };
 
-export const getInvoice = async (id: number) => {
+export const createInvoice = async (data: InvoiceFormData): Promise<Invoice> => {
+  const response = await apiClient.post('/invoices/', data);
+  return response.data;
+};
+
+export const getInvoice = async (id: number): Promise<Invoice> => {
   const response = await apiClient.get(`/invoices/${id}/`);
   return response.data;
 };
 
-export const updateInvoice = async (id: number, invoiceData: any) => {
-  const response = await apiClient.put(`/invoices/${id}/`, invoiceData);
+export const updateInvoice = async (id: number, data: Partial<InvoiceFormData>): Promise<Invoice> => {
+  const response = await apiClient.patch(`/invoices/${id}/`, data);
   return response.data;
 };
 
-export const deleteInvoice = async (id: number) => {
+export const deleteInvoice = async (id: number): Promise<void> => {
   await apiClient.delete(`/invoices/${id}/`);
 };
 
-// Customers
-export const fetchCustomers = async () => {
-  const response = await apiClient.get('/customers/');
+export const markInvoicePaid = async (id: number): Promise<Invoice> => {
+  const response = await apiClient.post(`/invoices/${id}/mark_paid/`);
   return response.data;
 };
 
-export const createCustomer = async (customerData: any) => {
-  const response = await apiClient.post('/customers/', customerData);
+export const markInvoiceUnpaid = async (id: number): Promise<Invoice> => {
+  const response = await apiClient.post(`/invoices/${id}/mark_unpaid/`);
   return response.data;
 };
 
-export const getCustomer = async (id: number) => {
-  const response = await apiClient.get(`/customers/${id}/`);
+// ============ KONTRAHENCI ============
+
+export const fetchContractors = async (search?: string): Promise<Contractor[]> => {
+  const response = await apiClient.get('/contractors/', { params: { search } });
   return response.data;
 };
 
-export const updateCustomer = async (id: number, customerData: any) => {
-  const response = await apiClient.put(`/customers/${id}/`, customerData);
+export const createContractor = async (data: ContractorFormData): Promise<Contractor> => {
+  const response = await apiClient.post('/contractors/', data);
   return response.data;
 };
 
-export const deleteCustomer = async (id: number) => {
-  await apiClient.delete(`/customers/${id}/`);
-};
-
-// Products
-export const fetchProducts = async () => {
-  const response = await apiClient.get('/products/');
+export const getContractor = async (id: number): Promise<Contractor> => {
+  const response = await apiClient.get(`/contractors/${id}/`);
   return response.data;
 };
 
-export const createProduct = async (productData: any) => {
-  const response = await apiClient.post('/products/', productData);
+export const updateContractor = async (id: number, data: Partial<ContractorFormData>): Promise<Contractor> => {
+  const response = await apiClient.patch(`/contractors/${id}/`, data);
   return response.data;
 };
 
-export const getProduct = async (id: number) => {
-  const response = await apiClient.get(`/products/${id}/`);
+export const deleteContractor = async (id: number): Promise<void> => {
+  await apiClient.delete(`/contractors/${id}/`);
+};
+
+// ============ USTAWIENIA ============
+
+export const fetchSettings = async (): Promise<Settings> => {
+  const response = await apiClient.get('/settings/');
   return response.data;
 };
 
-export const updateProduct = async (id: number, productData: any) => {
-  const response = await apiClient.put(`/products/${id}/`, productData);
+export const updateSettings = async (data: Partial<Settings>): Promise<Settings> => {
+  const response = await apiClient.patch('/settings/', data);
   return response.data;
 };
 
-export const deleteProduct = async (id: number) => {
-  await apiClient.delete(`/products/${id}/`);
-};
+// ============ UŻYTKOWNICY ============
 
-// Users
 export const fetchUsers = async () => {
   const response = await apiClient.get('/users/');
   return response.data;

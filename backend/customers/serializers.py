@@ -1,13 +1,30 @@
 from rest_framework import serializers
-from .models import Customer
+from .models import Contractor, Settings
 
 
-class CustomerSerializer(serializers.ModelSerializer):
-    display_name = serializers.CharField(read_only=True)
-    full_address = serializers.CharField(read_only=True)
+class ContractorSerializer(serializers.ModelSerializer):
+    """
+    Serializer kontrahenta/dostawcy.
+    """
+    pelny_adres = serializers.CharField(read_only=True)
     
     class Meta:
-        model = Customer
-        fields = ['id', 'customer_type', 'company_name', 'first_name', 'last_name', 'nip',
-                  'email', 'phone', 'street', 'city', 'postal_code', 'country', 'notes',
-                  'display_name', 'full_address', 'created_at', 'updated_at']
+        model = Contractor
+        fields = [
+            'id', 'nazwa', 'nip', 'ulica', 'miasto', 'kod_pocztowy', 'kraj',
+            'email', 'telefon', 'notatki', 'pelny_adres', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class SettingsSerializer(serializers.ModelSerializer):
+    """
+    Serializer ustawień firmy.
+    """
+    class Meta:
+        model = Settings
+        fields = [
+            'id', 'firma_nazwa', 'firma_nip', 'ksef_token', 'ksef_environment',
+            'auto_fetch_ksef', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
