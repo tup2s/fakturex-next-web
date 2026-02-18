@@ -71,6 +71,8 @@ export interface Settings {
   firma_nazwa: string;
   firma_nip: string;
   ksef_token: string;
+  ksef_token_masked?: string;
+  has_ksef_token?: boolean;
   ksef_environment: 'production' | 'test' | 'demo';
   auto_fetch_ksef: boolean;
   created_at: string;

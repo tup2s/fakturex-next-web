@@ -10,10 +10,11 @@
   --bg-card: #1e2746;
   --bg-hover: #253252;
   
-  /* Kolory tekstu */
+  /* Kolory tekstu - lepszy kontrast */
   --text-primary: #ffffff;
-  --text-secondary: #a0aec0;
-  --text-muted: #718096;
+  --text-secondary: #cbd5e0;
+  --text-muted: #a0aec0;
+  --text-label: #e2e8f0;
   
   /* Kolory akcentu */
   --accent-blue: #4299e1;
@@ -21,6 +22,7 @@
   --accent-yellow: #ecc94b;
   --accent-red: #f56565;
   --accent-orange: #ed8936;
+  --accent-purple: #805ad5;
   
   /* Cienie */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -29,6 +31,7 @@
   
   /* Border */
   --border-color: #2d3748;
+  --border-primary: #2d3748;
   --border-radius: 8px;
 }
 
@@ -304,11 +307,6 @@ body {
   background: var(--bg-tertiary);
   outline: 2px solid var(--accent-blue);
   outline-offset: -2px;
-}
-}
-
-.table tbody tr.selected {
-  background: var(--bg-tertiary);
   box-shadow: inset 3px 0 0 var(--accent-blue);
 }
 
@@ -360,7 +358,7 @@ body {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-label);
   font-size: 0.9rem;
 }
 
@@ -1099,5 +1097,532 @@ kbd {
   /* Dodaj padding na dole strony żeby treść nie była zasłonięta */
   .page-content {
     padding-bottom: 80px;
+  }
+}
+
+/* ===================================
+   SETTINGS PAGE - Professional Design
+   =================================== */
+
+.settings-page {
+  max-width: 900px;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* Settings Tabs */
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.settings-tab.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+/* Settings Section */
+.settings-section {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-header {
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.section-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.section-header .btn {
+  margin-top: 12px;
+}
+
+/* Settings Card */
+.settings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.card-section-title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+/* Settings Row / Field */
+.settings-row {
+  margin-bottom: 20px;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-field label {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.settings-field .form-control {
+  width: 100%;
+  max-width: 500px;
+}
+
+.settings-field .form-control.mono {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.field-hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.field-hint a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.field-hint a:hover {
+  text-decoration: underline;
+}
+
+.field-warning {
+  color: var(--accent-orange);
+  font-size: 13px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(237, 137, 54, 0.1);
+  border-radius: 6px;
+}
+
+.field-error {
+  color: var(--accent-red);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* Token Status */
+.token-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
+  font-weight: 400;
+}
+
+.token-status.configured {
+  background: rgba(72, 187, 120, 0.15);
+  color: var(--accent-green);
+}
+
+/* Checkbox Field */
+.checkbox-field {
+  margin-top: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-blue);
+}
+
+.checkbox-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.checkbox-text strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.checkbox-text small {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+/* Settings Actions */
+.settings-actions {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-primary);
+}
+
+/* Account Info */
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.account-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.account-details {
+  flex: 1;
+}
+
+.account-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.account-email {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.account-meta {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.account-meta strong {
+  color: var(--text-secondary);
+}
+
+/* Password Strength */
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.strength-bar {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Security Features */
+.security-info {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(66, 153, 225, 0.05) 100%);
+}
+
+.security-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.security-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.security-features li:last-child {
+  border-bottom: none;
+}
+
+.security-features .feature-icon {
+  color: var(--accent-green);
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Users List */
+.users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.user-item:hover {
+  background: var(--bg-card);
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--accent-blue);
+  color: #fff;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.user-meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.user-date {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.user-actions {
+  flex-shrink: 0;
+}
+
+/* About Card */
+.about-card {
+  text-align: center;
+  padding: 40px;
+}
+
+.about-logo {
+  margin-bottom: 20px;
+}
+
+.about-logo .logo-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.about-logo h3 {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.version-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.about-description {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin-bottom: 24px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.about-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.about-features .feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.about-features .feature-icon {
+  font-size: 18px;
+}
+
+/* Tech Info */
+.tech-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.tech-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 14px;
+}
+
+.tech-row:last-child {
+  border-bottom: none;
+}
+
+.tech-row span:first-child {
+  color: var(--text-secondary);
+}
+
+.tech-row span:last-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Responsive Settings */
+@media (max-width: 768px) {
+  .settings-tabs {
+    padding: 2px;
+  }
+  
+  .settings-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .tab-label {
+    display: none;
+  }
+  
+  .settings-card {
+    padding: 16px;
+  }
+  
+  .account-info {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .about-features {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-item {
+    flex-wrap: wrap;
+  }
+  
+  .user-actions {
+    width: 100%;
+    margin-top: 12px;
+  }
+  
+  .user-actions .btn {
+    width: 100%;
   }
 }
