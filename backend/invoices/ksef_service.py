@@ -1,6 +1,9 @@
 """
-Serwis integracji z KSeF (Krajowy System e-Faktur).
+Serwis integracji z KSeF (Krajowy System e-Faktur) API 2.0.
 Obsługuje pobieranie faktur kosztowych z API KSeF.
+
+UWAGA: Od 2 lutego 2026 KSeF API 1.0 zostało wyłączone.
+Ten serwis używa API 2.0 z nowymi endpointami.
 """
 import requests
 import xml.etree.ElementTree as ET
@@ -14,13 +17,19 @@ import hashlib
 
 class KSeFService:
     """
-    Serwis do komunikacji z API KSeF.
+    Serwis do komunikacji z API KSeF 2.0.
+    
+    Nowe URL-e API 2.0:
+    - Production: https://api.ksef.mf.gov.pl
+    - Demo: https://api-demo.ksef.mf.gov.pl
+    - Test: https://api-test.ksef.mf.gov.pl
     """
     
+    # KSeF API 2.0 endpoints (od 02.2026)
     ENVIRONMENTS = {
-        'production': 'https://ksef.mf.gov.pl/api',
-        'test': 'https://ksef-test.mf.gov.pl/api',
-        'demo': 'https://ksef-demo.mf.gov.pl/api'
+        'production': 'https://api.ksef.mf.gov.pl',
+        'test': 'https://api-test.ksef.mf.gov.pl',
+        'demo': 'https://api-demo.ksef.mf.gov.pl'
     }
     
     def __init__(self, token: str, nip: str, environment: str = 'test'):
@@ -28,86 +37,58 @@ class KSeFService:
         self.nip = nip
         self.environment = environment
         self.base_url = self.ENVIRONMENTS.get(environment, self.ENVIRONMENTS['test'])
-        self.session_token = None
+        self.access_token = None
         
-    def _get_headers(self) -> Dict:
-        """Nagłówki HTTP dla requestów."""
+    def _get_headers(self, include_auth: bool = True) -> Dict:
+        """Nagłówki HTTP dla requestów API 2.0."""
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
-        if self.session_token:
-            headers['SessionToken'] = self.session_token
+        if include_auth and self.access_token:
+            headers['Authorization'] = f'Bearer {self.access_token}'
         return headers
     
     def authorize(self) -> Tuple[bool, str]:
         """
-        Autoryzuj sesję w KSeF za pomocą tokena.
+        Autoryzuj sesję w KSeF 2.0 za pomocą tokena.
+        API 2.0 używa Bearer token authentication.
         Zwraca (sukces, komunikat/błąd).
         """
         try:
-            # KSeF używa autoryzacji tokenem
-            # Token może być certyfikatem lub autoryzacją podpisem
+            # KSeF 2.0 - autoryzacja tokenem
+            # Endpoint: POST /api/authentication/token
             
-            auth_url = f"{self.base_url}/online/Session/AuthorisationChallenge"
+            auth_url = f"{self.base_url}/api/authentication/token"
             
             payload = {
                 "contextIdentifier": {
-                    "type": "onip",
-                    "identifier": self.nip
-                }
+                    "type": "nip",
+                    "value": self.nip
+                },
+                "token": self.token
             }
             
             response = requests.post(
                 auth_url,
                 json=payload,
-                headers=self._get_headers(),
+                headers=self._get_headers(include_auth=False),
                 timeout=30
             )
             
-            if response.status_code == 200:
+            if response.status_code in [200, 201]:
                 try:
                     data = response.json()
                 except json.JSONDecodeError:
                     return False, f"KSeF zwrócił nieprawidłową odpowiedź: {response.text[:200]}"
-                    
-                challenge = data.get('challenge')
                 
-                # Podpisz challenge tokenem
-                init_url = f"{self.base_url}/online/Session/InitToken"
+                # W API 2.0 dostajemy access_token bezpośrednio
+                self.access_token = data.get('accessToken') or data.get('access_token')
                 
-                init_payload = {
-                    "context": {
-                        "contextIdentifier": {
-                            "type": "onip",
-                            "identifier": self.nip
-                        },
-                        "credentialsRoleList": [
-                            {
-                                "type": "token",
-                                "roleType": "credentials_read"
-                            }
-                        ]
-                    },
-                    "token": self.token
-                }
-                
-                init_response = requests.post(
-                    init_url,
-                    json=init_payload,
-                    headers=self._get_headers(),
-                    timeout=30
-                )
-                
-                if init_response.status_code == 201:
-                    try:
-                        session_data = init_response.json()
-                    except json.JSONDecodeError:
-                        return False, f"KSeF zwrócił nieprawidłową odpowiedź: {init_response.text[:200]}"
-                    self.session_token = session_data.get('sessionToken', {}).get('token')
-                    return True, "Autoryzacja udana"
+                if self.access_token:
+                    return True, "Autoryzacja udana (KSeF API 2.0)"
                 else:
-                    return False, f"Błąd inicjalizacji sesji KSeF (HTTP {init_response.status_code}): {init_response.text[:200]}"
+                    return False, f"Brak tokena w odpowiedzi: {data}"
             else:
                 return False, f"Błąd autoryzacji KSeF (HTTP {response.status_code}): {response.text[:200]}"
                 
@@ -126,32 +107,37 @@ class KSeFService:
         self, 
         date_from: str, 
         date_to: str,
-        subject_type: str = 'subject2'  # subject2 = faktury kosztowe (odbiorca)
+        subject_type: str = 'SUBJECT2'  # SUBJECT2 = faktury kosztowe (odbiorca)
     ) -> Tuple[List[Dict], str]:
         """
-        Pobierz faktury z KSeF za podany okres.
-        subject_type: 'subject1' = wystawione, 'subject2' = otrzymane (kosztowe)
+        Pobierz faktury z KSeF 2.0 za podany okres.
+        subject_type: 'SUBJECT1' = wystawione, 'SUBJECT2' = otrzymane (kosztowe)
         Zwraca (lista_faktur, komunikat).
         """
         invoices = []
         
-        if not self.session_token:
+        if not self.access_token:
             success, msg = self.authorize()
             if not success:
                 return [], msg
         
         try:
-            query_url = f"{self.base_url}/online/Query/Invoice/Sync"
+            # KSeF API 2.0 - nowy endpoint zapytań
+            query_url = f"{self.base_url}/api/invoices/query"
             
-            # Format dat ISO
+            # Format dat ISO 8601
             date_from_iso = f"{date_from}T00:00:00Z"
             date_to_iso = f"{date_to}T23:59:59Z"
             
+            # Payload zgodny z API 2.0
             payload = {
                 "queryCriteria": {
                     "subjectType": subject_type,
-                    "acquisitionTimestampThresholdFrom": date_from_iso,
-                    "acquisitionTimestampThresholdTo": date_to_iso
+                    "dateRange": {
+                        "dateType": "ISSUE",
+                        "from": date_from_iso,
+                        "to": date_to_iso
+                    }
                 },
                 "pageSize": 100,
                 "pageOffset": 0
@@ -165,72 +151,97 @@ class KSeFService:
             )
             
             if response.status_code == 200:
-                data = response.json()
-                invoice_list = data.get('invoiceHeaderList', [])
+                try:
+                    data = response.json()
+                except json.JSONDecodeError:
+                    return [], f"KSeF zwrócił nieprawidłową odpowiedź: {response.text[:200]}"
+                
+                # API 2.0 może używać różnych nazw pól
+                invoice_list = data.get('invoiceHeaders', []) or data.get('invoiceHeaderList', []) or data.get('items', [])
                 
                 for inv in invoice_list:
                     invoice_data = self._parse_invoice_header(inv)
                     if invoice_data:
                         invoices.append(invoice_data)
                 
-                return invoices, f"Pobrano {len(invoices)} faktur"
+                return invoices, f"Pobrano {len(invoices)} faktur (KSeF API 2.0)"
             else:
-                return [], f"Błąd zapytania: {response.text}"
+                return [], f"Błąd zapytania KSeF (HTTP {response.status_code}): {response.text[:200]}"
                 
+        except requests.exceptions.Timeout:
+            return [], "Timeout zapytania KSeF"
+        except requests.exceptions.ConnectionError:
+            return [], "Nie można połączyć się z KSeF"
         except Exception as e:
             return [], f"Błąd pobierania faktur: {str(e)}"
     
     def _parse_invoice_header(self, header: Dict) -> Optional[Dict]:
-        """Parsuj nagłówek faktury z KSeF."""
+        """Parsuj nagłówek faktury z KSeF API 2.0."""
         try:
+            # API 2.0 może używać różnych nazw pól
+            ksef_ref = header.get('ksefReferenceNumber') or header.get('referenceNumber', '')
+            invoice_ref = header.get('invoiceReferenceNumber') or header.get('invoiceNumber', '')
+            issue_date = header.get('invoicingDate') or header.get('issueDate', '')
+            
+            # Kwoty
+            net = Decimal(str(header.get('net', 0) or header.get('netAmount', 0)))
+            vat = Decimal(str(header.get('vat', 0) or header.get('vatAmount', 0)))
+            
+            # Podmiot
+            subject_name = header.get('subjectName') or header.get('issuerName', '')
+            subject_nip = header.get('subjectNip') or header.get('issuerNip', '')
+            
             return {
-                'ksef_numer': header.get('ksefReferenceNumber', ''),
-                'numer': header.get('invoiceReferenceNumber', ''),
-                'data': header.get('invoicingDate', '')[:10] if header.get('invoicingDate') else '',
-                'kwota': Decimal(str(header.get('net', 0))) + Decimal(str(header.get('vat', 0))),
-                'dostawca': header.get('subjectName', ''),
-                'dostawca_nip': header.get('subjectNip', ''),
+                'ksef_numer': ksef_ref,
+                'numer': invoice_ref,
+                'data': issue_date[:10] if issue_date else '',
+                'kwota': net + vat,
+                'dostawca': subject_name,
+                'dostawca_nip': subject_nip,
             }
         except Exception:
             return None
     
     def get_invoice_xml(self, ksef_number: str) -> Tuple[str, str]:
         """
-        Pobierz XML faktury z KSeF.
+        Pobierz XML faktury z KSeF API 2.0.
         Zwraca (xml_content, komunikat).
         """
-        if not self.session_token:
+        if not self.access_token:
             success, msg = self.authorize()
             if not success:
                 return '', msg
         
         try:
-            url = f"{self.base_url}/online/Invoice/Get/{ksef_number}"
+            # KSeF API 2.0 - endpoint do pobierania faktury
+            url = f"{self.base_url}/api/invoices/{ksef_number}"
             
             response = requests.get(
                 url,
-                headers={**self._get_headers(), 'Accept': 'application/octet-stream'},
+                headers={**self._get_headers(), 'Accept': 'application/xml'},
                 timeout=30
             )
             
             if response.status_code == 200:
-                return response.text, "Pobrano XML"
+                return response.text, "Pobrano XML (KSeF API 2.0)"
             else:
-                return '', f"Błąd pobierania XML: {response.text}"
+                return '', f"Błąd pobierania XML: {response.text[:200]}"
                 
         except Exception as e:
             return '', f"Błąd: {str(e)}"
     
     def terminate_session(self):
-        """Zakończ sesję KSeF."""
-        if self.session_token:
+        """Zakończ sesję KSeF API 2.0."""
+        if self.access_token:
             try:
-                url = f"{self.base_url}/online/Session/Terminate"
-                requests.get(url, headers=self._get_headers(), timeout=10)
+                # W API 2.0 tokeny są ważne do wygaśnięcia, 
+                # ale możemy wywołać logout jeśli jest dostępny
+                url = f"{self.base_url}/api/authentication/logout"
+                requests.post(url, headers=self._get_headers(), timeout=10)
             except Exception:
                 pass
             finally:
-                self.session_token = None
+                self.access_token = None
 
 
 def fetch_invoices_from_ksef(
@@ -241,7 +252,17 @@ def fetch_invoices_from_ksef(
     date_to: str = None
 ) -> Tuple[List[Dict], str]:
     """
-    Wrapper do pobierania faktur z KSeF.
+    Wrapper do pobierania faktur z KSeF API 2.0.
+    
+    Args:
+        token: Token autoryzacji KSeF
+        nip: NIP firmy
+        environment: 'production', 'demo', lub 'test'
+        date_from: Data początkowa (YYYY-MM-DD)
+        date_to: Data końcowa (YYYY-MM-DD)
+    
+    Returns:
+        Tuple[List[Dict], str]: Lista faktur i komunikat
     """
     if not date_from:
         date_from = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')

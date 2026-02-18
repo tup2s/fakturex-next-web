@@ -109,9 +109,7 @@ const Invoices: React.FC = () => {
                     setSelectedIndex(prev => Math.min(prev + 1, filteredInvoices.length - 1));
                     break;
                 case 'arrowup':
-                case 'k':
-                    // ↑ lub K - poprzednia faktura (tylko gdy nie pobieramy z KSeF)
-                    if (e.key === 'k' && !e.shiftKey) break; // 'k' używane do KSeF
+                    // ↑ - poprzednia faktura
                     e.preventDefault();
                     setSelectedIndex(prev => Math.max(prev - 1, 0));
                     break;
@@ -161,6 +159,27 @@ const Invoices: React.FC = () => {
                     // / - szukaj
                     e.preventDefault();
                     document.getElementById('search-input')?.focus();
+                    break;
+                case 'c':
+                    // C - kopiuj numer faktury
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
+                        const numer = filteredInvoices[selectedIndex].numer;
+                        navigator.clipboard.writeText(numer).then(() => {
+                            // Mini feedback - można dodać toast
+                            console.log('Skopiowano numer:', numer);
+                        });
+                    }
+                    break;
+                case 'w':
+                    // W - kopiuj kwotę
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
+                        const kwota = filteredInvoices[selectedIndex].kwota.toFixed(2);
+                        navigator.clipboard.writeText(kwota).then(() => {
+                            console.log('Skopiowano kwotę:', kwota);
+                        });
+                    }
                     break;
             }
         };
@@ -645,38 +664,38 @@ const Invoices: React.FC = () => {
                                 
                                 <div className="preview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
                                     <div>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Dostawca</p>
-                                        <p style={{ fontWeight: '600', margin: 0 }}>{previewInvoice.dostawca}</p>
+                                        <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Dostawca</p>
+                                        <p style={{ fontWeight: '600', margin: 0, color: 'var(--text-primary)' }}>{previewInvoice.dostawca}</p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Kwota</p>
+                                        <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Kwota</p>
                                         <p style={{ fontWeight: '700', fontSize: '1.5rem', margin: 0, color: 'var(--accent-green)' }}>
                                             {formatCurrency(previewInvoice.kwota)}
                                         </p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Data wystawienia</p>
-                                        <p style={{ margin: 0 }}>{previewInvoice.data}</p>
+                                        <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Data wystawienia</p>
+                                        <p style={{ margin: 0, color: 'var(--text-primary)' }}>{previewInvoice.data}</p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Termin płatności</p>
-                                        <p style={{ margin: 0, color: previewInvoice.is_overdue ? 'var(--accent-red)' : 'inherit' }}>
+                                        <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Termin płatności</p>
+                                        <p style={{ margin: 0, color: previewInvoice.is_overdue ? 'var(--accent-red)' : 'var(--text-primary)' }}>
                                             {previewInvoice.termin_platnosci}
                                             {previewInvoice.is_overdue && ' (przeterminowana)'}
                                         </p>
                                     </div>
                                     {previewInvoice.ksef_numer && (
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Numer KSeF</p>
-                                            <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                            <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Numer KSeF</p>
+                                            <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                                                 {previewInvoice.ksef_numer}
                                             </p>
                                         </div>
                                     )}
                                     {previewInvoice.notatki && (
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Notatki</p>
-                                            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{previewInvoice.notatki}</p>
+                                            <p style={{ color: 'var(--text-label)', fontSize: '0.85rem', marginBottom: '4px' }}>Notatki</p>
+                                            <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{previewInvoice.notatki}</p>
                                         </div>
                                     )}
                                 </div>
@@ -715,7 +734,7 @@ const Invoices: React.FC = () => {
                             <button className="modal-close" onClick={() => setShowKsefModal(false)}>&times;</button>
                         </div>
                         <div className="modal-body">
-                            <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+                            <p style={{ marginBottom: '20px', color: 'var(--text-label)' }}>
                                 Wybierz zakres dat, z którego chcesz pobrać faktury kosztowe z Krajowego Systemu e-Faktur.
                             </p>
                             <div className="form-row">

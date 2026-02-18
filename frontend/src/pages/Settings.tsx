@@ -288,7 +288,11 @@ const Settings: React.FC = () => {
                     <div className="settings-section">
                         <div className="section-header">
                             <h2>Integracja z KSeF</h2>
-                            <p>Krajowy System e-Faktur - konfiguracja polaczenia</p>
+                            <p>Krajowy System e-Faktur - API 2.0 (od lutego 2026)</p>
+                        </div>
+
+                        <div className="alert alert-info" style={{ marginBottom: '20px' }}>
+                            📢 <strong>KSeF API 2.0</strong> - Od 2 lutego 2026 obowiązuje nowa wersja API. System został zaktualizowany do wersji 2.0.
                         </div>
 
                         {!formData.firma_nip && (
@@ -322,9 +326,9 @@ const Settings: React.FC = () => {
                                                 ksef_environment: e.target.value as 'production' | 'test' | 'demo' 
                                             })}
                                         >
-                                            <option value="demo"> Demo - do nauki i testow</option>
-                                            <option value="test"> Test - srodowisko testowe MF</option>
-                                            <option value="production"> Produkcja - prawdziwe faktury</option>
+                                            <option value="demo">🧪 Demo (api-demo.ksef.mf.gov.pl) - do nauki i testów</option>
+                                            <option value="test">🔬 Test (api-test.ksef.mf.gov.pl) - środowisko testowe MF</option>
+                                            <option value="production">🏢 Produkcja (api.ksef.mf.gov.pl) - prawdziwe faktury</option>
                                         </select>
                                         {formData.ksef_environment === 'production' && (
                                             <div className="field-warning">

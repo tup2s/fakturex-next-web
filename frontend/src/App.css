@@ -441,6 +441,7 @@ select option {
 .modal-title {
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .modal-close {
@@ -459,6 +460,16 @@ select option {
 
 .modal-body {
   padding: 24px;
+  color: var(--text-primary);
+}
+
+.modal-body p {
+  color: var(--text-primary);
+}
+
+.modal-body .preview-label,
+.modal-body p[style*="text-secondary"] {
+  color: var(--text-label) !important;
 }
 
 .modal-footer {
