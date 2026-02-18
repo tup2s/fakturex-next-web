@@ -1,18 +1,30 @@
 import React, { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
+import { useAuthContext } from '../App';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, loading, error } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuthContext();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const success = await login(username, password);
-    if (success) {
-      navigate('/');
+    setLoading(true);
+    setError(null);
+    try {
+      const success = await login(username, password);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Nieprawidłowa nazwa użytkownika lub hasło');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Błąd logowania');
+    } finally {
+      setLoading(false);
     }
   };
 

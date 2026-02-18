@@ -137,6 +137,22 @@ export const markInvoiceUnpaid = async (id: number): Promise<Invoice> => {
   return response.data;
 };
 
+export const fetchFromKSeF = async (dateFrom?: string, dateTo?: string): Promise<{
+  message: string;
+  info?: string;
+  settings_configured: boolean;
+  environment?: string;
+  nip?: string;
+  imported_count: number;
+  error?: string;
+}> => {
+  const response = await apiClient.post('/invoices/fetch_from_ksef/', {
+    date_from: dateFrom,
+    date_to: dateTo
+  });
+  return response.data;
+};
+
 // ============ KONTRAHENCI ============
 
 export const fetchContractors = async (search?: string): Promise<Contractor[]> => {

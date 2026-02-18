@@ -7,7 +7,8 @@ import {
     updateInvoice, 
     deleteInvoice,
     markInvoicePaid,
-    markInvoiceUnpaid
+    markInvoiceUnpaid,
+    fetchFromKSeF
 } from '../services/api';
 
 const emptyForm: InvoiceFormData = {
@@ -30,6 +31,8 @@ const Invoices: React.FC = () => {
     const [formData, setFormData] = useState<InvoiceFormData>(emptyForm);
     const [filter, setFilter] = useState<'all' | 'niezaplacona' | 'zaplacona' | 'overdue'>('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [ksefLoading, setKsefLoading] = useState(false);
+    const [ksefMessage, setKsefMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
     useEffect(() => {
         loadData();
@@ -134,6 +137,30 @@ const Invoices: React.FC = () => {
         }
     };
 
+    const handleFetchFromKSeF = async () => {
+        setKsefLoading(true);
+        setKsefMessage(null);
+        try {
+            const result = await fetchFromKSeF();
+            if (result.error) {
+                setKsefMessage({ type: 'error', text: result.error });
+            } else {
+                setKsefMessage({ 
+                    type: result.imported_count > 0 ? 'success' : 'info', 
+                    text: result.message + (result.info ? ` ${result.info}` : '')
+                });
+                if (result.imported_count > 0) {
+                    loadData();
+                }
+            }
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'Błąd podczas pobierania z KSeF';
+            setKsefMessage({ type: 'error', text: errorMsg });
+        } finally {
+            setKsefLoading(false);
+        }
+    };
+
     const handleContractorSelect = (contractorId: string) => {
         if (contractorId) {
             const contractor = contractors.find(c => c.id === parseInt(contractorId));
@@ -188,10 +215,31 @@ const Invoices: React.FC = () => {
                     <h1 className="page-title">Faktury</h1>
                     <p className="page-subtitle">Zarządzaj fakturami kosztowymi</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-                    + Dodaj fakturę
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        className="btn btn-secondary" 
+                        onClick={handleFetchFromKSeF}
+                        disabled={ksefLoading}
+                    >
+                        {ksefLoading ? 'Pobieranie...' : '⬇ Pobierz z KSeF'}
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                        + Dodaj fakturę
+                    </button>
+                </div>
             </div>
+
+            {ksefMessage && (
+                <div className={`alert alert-${ksefMessage.type}`} style={{ marginBottom: '20px' }}>
+                    {ksefMessage.text}
+                    <button 
+                        onClick={() => setKsefMessage(null)} 
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.2rem' }}
+                    >
+                        ×
+                    </button>
+                </div>
+            )
 
             {/* Filtry */}
             <div className="card" style={{ marginBottom: '20px' }}>

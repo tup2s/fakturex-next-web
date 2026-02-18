@@ -373,6 +373,21 @@ body {
   color: var(--text-muted);
 }
 
+/* Globalne style dla wszystkich inputów i selectów */
+input, select, textarea {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
+
+select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -492,7 +507,7 @@ body {
 .stat-amount {
   font-family: 'Consolas', monospace;
   font-size: 1.1rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-top: 8px;
 }
 
@@ -510,19 +525,26 @@ body {
 .alert-warning {
   background: rgba(237, 137, 54, 0.15);
   border: 1px solid var(--accent-orange);
-  color: var(--accent-orange);
+  color: #fbd38d;
 }
 
-.alert-danger {
+.alert-info {
+  background: rgba(66, 153, 225, 0.15);
+  border: 1px solid var(--accent-blue);
+  color: #90cdf4;
+}
+
+.alert-danger,
+.alert-error {
   background: rgba(245, 101, 101, 0.15);
   border: 1px solid var(--accent-red);
-  color: var(--accent-red);
+  color: #feb2b2;
 }
 
 .alert-success {
   background: rgba(72, 187, 120, 0.15);
   border: 1px solid var(--accent-green);
-  color: var(--accent-green);
+  color: #9ae6b4;
 }
 
 /* ============ EMPTY STATE ============ */
@@ -654,10 +676,32 @@ body {
   margin-bottom: 0;
 }
 
+.login-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
 .login-form input {
   width: 100%;
   padding: 14px 16px;
   font-size: 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.login-form input::placeholder {
+  color: var(--text-muted);
 }
 
 .btn-login {
