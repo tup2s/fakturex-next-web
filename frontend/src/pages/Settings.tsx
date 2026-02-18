@@ -291,12 +291,26 @@ const Settings: React.FC = () => {
                             <p>Krajowy System e-Faktur - konfiguracja polaczenia</p>
                         </div>
 
+                        {!formData.firma_nip && (
+                            <div className="alert alert-warning" style={{ marginBottom: '20px' }}>
+                                ⚠️ <strong>Wymagany NIP!</strong> Przed konfiguracją KSeF, przejdź do zakładki "Firma" i wprowadź NIP firmy.
+                            </div>
+                        )}
+
                         {message && (
                             <div className={`alert alert-${message.type}`}>{message.text}</div>
                         )}
 
                         <form onSubmit={handleSubmit}>
                             <div className="settings-card">
+                                {formData.firma_nip && (
+                                    <div className="settings-row" style={{ marginBottom: '20px' }}>
+                                        <div style={{ padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>NIP firmy: </span>
+                                            <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{formData.firma_nip}</strong>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="settings-row">
                                     <div className="settings-field">
                                         <label>Srodowisko KSeF</label>

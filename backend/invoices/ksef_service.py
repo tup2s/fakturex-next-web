@@ -66,7 +66,11 @@ class KSeFService:
             )
             
             if response.status_code == 200:
-                data = response.json()
+                try:
+                    data = response.json()
+                except json.JSONDecodeError:
+                    return False, f"KSeF zwrócił nieprawidłową odpowiedź: {response.text[:200]}"
+                    
                 challenge = data.get('challenge')
                 
                 # Podpisz challenge tokenem
@@ -96,18 +100,25 @@ class KSeFService:
                 )
                 
                 if init_response.status_code == 201:
-                    session_data = init_response.json()
+                    try:
+                        session_data = init_response.json()
+                    except json.JSONDecodeError:
+                        return False, f"KSeF zwrócił nieprawidłową odpowiedź: {init_response.text[:200]}"
                     self.session_token = session_data.get('sessionToken', {}).get('token')
                     return True, "Autoryzacja udana"
                 else:
-                    return False, f"Błąd inicjalizacji sesji: {init_response.text}"
+                    return False, f"Błąd inicjalizacji sesji KSeF (HTTP {init_response.status_code}): {init_response.text[:200]}"
             else:
-                return False, f"Błąd autoryzacji: {response.text}"
+                return False, f"Błąd autoryzacji KSeF (HTTP {response.status_code}): {response.text[:200]}"
                 
         except requests.exceptions.Timeout:
-            return False, "Timeout połączenia z KSeF"
+            return False, "Timeout połączenia z KSeF - serwer nie odpowiada"
+        except requests.exceptions.ConnectionError:
+            return False, "Nie można połączyć się z KSeF - sprawdź połączenie internetowe"
         except requests.exceptions.RequestException as e:
-            return False, f"Błąd połączenia: {str(e)}"
+            return False, f"Błąd połączenia HTTP: {str(e)}"
+        except json.JSONDecodeError as e:
+            return False, f"Błąd parsowania odpowiedzi KSeF: {str(e)}"
         except Exception as e:
             return False, f"Nieoczekiwany błąd: {str(e)}"
     
