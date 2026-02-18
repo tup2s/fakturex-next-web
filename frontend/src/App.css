@@ -123,7 +123,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  color: var(--text-secondary);
+  color: var(--text-label);
   text-decoration: none;
   border-radius: var(--border-radius);
   transition: all 0.2s;
@@ -292,7 +292,7 @@ body {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-secondary);
+  color: var(--text-label);
 }
 
 .table tbody tr {
@@ -509,7 +509,7 @@ select option {
 }
 
 .stat-label {
-  color: var(--text-secondary);
+  color: var(--text-label);
   font-size: 0.9rem;
   margin-top: 4px;
 }
@@ -517,7 +517,7 @@ select option {
 .stat-amount {
   font-family: 'Consolas', monospace;
   font-size: 1.1rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin-top: 8px;
 }
 
@@ -535,26 +535,26 @@ select option {
 .alert-warning {
   background: rgba(237, 137, 54, 0.15);
   border: 1px solid var(--accent-orange);
-  color: #fbd38d;
+  color: #fff3cd;
 }
 
 .alert-info {
   background: rgba(66, 153, 225, 0.15);
   border: 1px solid var(--accent-blue);
-  color: #90cdf4;
+  color: #d6ecff;
 }
 
 .alert-danger,
 .alert-error {
   background: rgba(245, 101, 101, 0.15);
   border: 1px solid var(--accent-red);
-  color: #feb2b2;
+  color: #ffd6d6;
 }
 
 .alert-success {
   background: rgba(72, 187, 120, 0.15);
   border: 1px solid var(--accent-green);
-  color: #9ae6b4;
+  color: #d4f5e0;
 }
 
 /* ============ EMPTY STATE ============ */
@@ -562,7 +562,7 @@ select option {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .empty-state svg {
@@ -574,7 +574,7 @@ select option {
 
 .empty-state h3 {
   font-size: 1.1rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 

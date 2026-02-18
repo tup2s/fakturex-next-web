@@ -635,21 +635,21 @@ const Invoices: React.FC = () => {
                                 
                                 <div className="preview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
                                     <div>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Dostawca</p>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Dostawca</p>
                                         <p style={{ fontWeight: '600', margin: 0 }}>{previewInvoice.dostawca}</p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Kwota</p>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Kwota</p>
                                         <p style={{ fontWeight: '700', fontSize: '1.5rem', margin: 0, color: 'var(--accent-green)' }}>
                                             {formatCurrency(previewInvoice.kwota)}
                                         </p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Data wystawienia</p>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Data wystawienia</p>
                                         <p style={{ margin: 0 }}>{previewInvoice.data}</p>
                                     </div>
                                     <div>
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Termin płatności</p>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Termin płatności</p>
                                         <p style={{ margin: 0, color: previewInvoice.is_overdue ? 'var(--accent-red)' : 'inherit' }}>
                                             {previewInvoice.termin_platnosci}
                                             {previewInvoice.is_overdue && ' (przeterminowana)'}
@@ -657,7 +657,7 @@ const Invoices: React.FC = () => {
                                     </div>
                                     {previewInvoice.ksef_numer && (
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Numer KSeF</p>
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Numer KSeF</p>
                                             <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.9rem' }}>
                                                 {previewInvoice.ksef_numer}
                                             </p>
@@ -665,7 +665,7 @@ const Invoices: React.FC = () => {
                                     )}
                                     {previewInvoice.notatki && (
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Notatki</p>
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '4px' }}>Notatki</p>
                                             <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{previewInvoice.notatki}</p>
                                         </div>
                                     )}
