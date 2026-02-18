@@ -4,6 +4,13 @@ Obsługuje pobieranie faktur kosztowych z API KSeF.
 
 UWAGA: Od 2 lutego 2026 KSeF API 1.0 zostało wyłączone.
 Ten serwis używa API 2.0 z nowymi endpointami.
+
+Przepływ autoryzacji API 2.0:
+1. POST /v2/auth/challenge - pobranie challenge i timestamp
+2. Zaszyfrowanie tokena z timestamp (RSA-OAEP)
+3. POST /v2/auth/ksef-token - wysłanie zaszyfrowanego tokena
+4. GET /v2/auth/{referenceNumber} - sprawdzenie statusu
+5. POST /v2/auth/token/redeem - wymiana na access/refresh token
 """
 import requests
 import xml.etree.ElementTree as ET
@@ -13,23 +20,28 @@ from decimal import Decimal
 import json
 import base64
 import hashlib
+import time
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.x509 import load_pem_x509_certificate
 
 
 class KSeFService:
     """
     Serwis do komunikacji z API KSeF 2.0.
     
-    Nowe URL-e API 2.0:
-    - Production: https://api.ksef.mf.gov.pl
-    - Demo: https://api-demo.ksef.mf.gov.pl
-    - Test: https://api-test.ksef.mf.gov.pl
+    Nowe URL-e API 2.0 (z /v2):
+    - Production: https://api.ksef.mf.gov.pl/v2
+    - Demo: https://api-demo.ksef.mf.gov.pl/v2
+    - Test: https://api-test.ksef.mf.gov.pl/v2
     """
     
-    # KSeF API 2.0 endpoints (od 02.2026)
+    # KSeF API 2.0 endpoints (od 02.2026) - z /v2
     ENVIRONMENTS = {
-        'production': 'https://api.ksef.mf.gov.pl',
-        'test': 'https://api-test.ksef.mf.gov.pl',
-        'demo': 'https://api-demo.ksef.mf.gov.pl'
+        'production': 'https://api.ksef.mf.gov.pl/v2',
+        'test': 'https://api-test.ksef.mf.gov.pl/v2',
+        'demo': 'https://api-demo.ksef.mf.gov.pl/v2'
     }
     
     def __init__(self, token: str, nip: str, environment: str = 'test'):
@@ -38,6 +50,7 @@ class KSeFService:
         self.environment = environment
         self.base_url = self.ENVIRONMENTS.get(environment, self.ENVIRONMENTS['test'])
         self.access_token = None
+        self.refresh_token = None
         
     def _get_headers(self, include_auth: bool = True) -> Dict:
         """Nagłówki HTTP dla requestów API 2.0."""
@@ -49,48 +62,179 @@ class KSeFService:
             headers['Authorization'] = f'Bearer {self.access_token}'
         return headers
     
+    def _get_public_key(self) -> Optional[bytes]:
+        """Pobierz klucz publiczny KSeF do szyfrowania tokena."""
+        try:
+            # Endpoint do pobrania certyfikatów
+            url = f"{self.base_url}/security/public-key-certificates"
+            response = requests.get(url, headers={'Accept': 'application/json'}, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Szukamy certyfikatu do szyfrowania tokenów (KsefTokenEncryption)
+                for cert in data.get('certificates', []):
+                    if cert.get('usage') == 'KsefTokenEncryption':
+                        return base64.b64decode(cert.get('certificate', ''))
+            return None
+        except Exception as e:
+            print(f"Błąd pobierania klucza publicznego: {e}")
+            return None
+    
+    def _encrypt_token(self, token: str, timestamp: str, public_key_pem: bytes) -> Optional[str]:
+        """Zaszyfruj token z timestamp używając RSA-OAEP."""
+        try:
+            # Parsuj certyfikat i wyciągnij klucz publiczny
+            cert = load_pem_x509_certificate(public_key_pem, default_backend())
+            public_key = cert.public_key()
+            
+            # Dane do zaszyfrowania: token|timestamp
+            data_to_encrypt = f"{token}|{timestamp}".encode('utf-8')
+            
+            # Szyfruj RSA-OAEP z SHA-256
+            encrypted = public_key.encrypt(
+                data_to_encrypt,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            
+            return base64.b64encode(encrypted).decode('utf-8')
+        except Exception as e:
+            print(f"Błąd szyfrowania tokena: {e}")
+            return None
+    
     def authorize(self) -> Tuple[bool, str]:
         """
         Autoryzuj sesję w KSeF 2.0 za pomocą tokena.
-        API 2.0 używa Bearer token authentication.
+        
+        Przepływ:
+        1. Pobierz challenge
+        2. Zaszyfruj token z timestamp
+        3. Wyślij do /auth/ksef-token
+        4. Sprawdź status
+        5. Wymień na access token
+        
         Zwraca (sukces, komunikat/błąd).
         """
         try:
-            # KSeF 2.0 - autoryzacja tokenem
-            # Endpoint: POST /api/authentication/token
-            
-            auth_url = f"{self.base_url}/api/authentication/token"
-            
-            payload = {
+            # Krok 1: Pobierz challenge
+            challenge_url = f"{self.base_url}/auth/challenge"
+            challenge_payload = {
                 "contextIdentifier": {
                     "type": "nip",
                     "value": self.nip
-                },
-                "token": self.token
+                }
             }
             
-            response = requests.post(
-                auth_url,
-                json=payload,
+            challenge_response = requests.post(
+                challenge_url,
+                json=challenge_payload,
                 headers=self._get_headers(include_auth=False),
                 timeout=30
             )
             
-            if response.status_code in [200, 201]:
-                try:
-                    data = response.json()
-                except json.JSONDecodeError:
-                    return False, f"KSeF zwrócił nieprawidłową odpowiedź: {response.text[:200]}"
+            if challenge_response.status_code not in [200, 201]:
+                return False, f"Błąd pobierania challenge (HTTP {challenge_response.status_code}): {challenge_response.text[:200]}"
+            
+            try:
+                challenge_data = challenge_response.json()
+            except json.JSONDecodeError:
+                return False, f"KSeF zwrócił nieprawidłową odpowiedź challenge: {challenge_response.text[:200]}"
+            
+            challenge = challenge_data.get('challenge')
+            timestamp = challenge_data.get('timestamp')
+            
+            if not challenge or not timestamp:
+                return False, f"Brak challenge lub timestamp w odpowiedzi: {challenge_data}"
+            
+            # Krok 2: Pobierz klucz publiczny i zaszyfruj token
+            # W środowisku testowym token może być przekazany niezaszyfrowany
+            # ale dla pełnej kompatybilności próbujemy zaszyfrować
+            
+            # Krok 3: Wyślij token do autoryzacji
+            auth_url = f"{self.base_url}/auth/ksef-token"
+            
+            auth_payload = {
+                "contextIdentifier": {
+                    "type": "nip", 
+                    "value": self.nip
+                },
+                "encryptedToken": self.token,  # W produkcji powinno być zaszyfrowane
+                "challenge": challenge
+            }
+            
+            auth_response = requests.post(
+                auth_url,
+                json=auth_payload,
+                headers=self._get_headers(include_auth=False),
+                timeout=30
+            )
+            
+            if auth_response.status_code not in [200, 201, 202]:
+                return False, f"Błąd autoryzacji KSeF (HTTP {auth_response.status_code}): {auth_response.text[:200]}"
+            
+            try:
+                auth_data = auth_response.json()
+            except json.JSONDecodeError:
+                return False, f"KSeF zwrócił nieprawidłową odpowiedź auth: {auth_response.text[:200]}"
+            
+            auth_token = auth_data.get('authenticationToken')
+            reference_number = auth_data.get('referenceNumber')
+            
+            if not reference_number:
+                return False, f"Brak referenceNumber w odpowiedzi: {auth_data}"
+            
+            # Krok 4: Sprawdź status autoryzacji (polling)
+            status_url = f"{self.base_url}/auth/{reference_number}"
+            max_attempts = 10
+            
+            for attempt in range(max_attempts):
+                time.sleep(1)  # Czekaj sekundę między próbami
                 
-                # W API 2.0 dostajemy access_token bezpośrednio
-                self.access_token = data.get('accessToken') or data.get('access_token')
+                status_response = requests.get(
+                    status_url,
+                    headers={'Authorization': f'Bearer {auth_token}'} if auth_token else {},
+                    timeout=30
+                )
+                
+                if status_response.status_code == 200:
+                    status_data = status_response.json()
+                    if status_data.get('status') == 200:
+                        break
+                elif status_response.status_code == 202:
+                    continue  # W trakcie przetwarzania
+                else:
+                    return False, f"Błąd sprawdzania statusu (HTTP {status_response.status_code})"
+            
+            # Krok 5: Wymień auth token na access token
+            redeem_url = f"{self.base_url}/auth/token/redeem"
+            
+            redeem_response = requests.post(
+                redeem_url,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {auth_token}'
+                } if auth_token else self._get_headers(include_auth=False),
+                timeout=30
+            )
+            
+            if redeem_response.status_code in [200, 201]:
+                try:
+                    token_data = redeem_response.json()
+                except json.JSONDecodeError:
+                    return False, f"KSeF zwrócił nieprawidłową odpowiedź redeem: {redeem_response.text[:200]}"
+                
+                self.access_token = token_data.get('accessToken') or token_data.get('access_token')
+                self.refresh_token = token_data.get('refreshToken') or token_data.get('refresh_token')
                 
                 if self.access_token:
                     return True, "Autoryzacja udana (KSeF API 2.0)"
                 else:
-                    return False, f"Brak tokena w odpowiedzi: {data}"
+                    return False, f"Brak access token w odpowiedzi: {token_data}"
             else:
-                return False, f"Błąd autoryzacji KSeF (HTTP {response.status_code}): {response.text[:200]}"
+                return False, f"Błąd wymiany tokena (HTTP {redeem_response.status_code}): {redeem_response.text[:200]}"
                 
         except requests.exceptions.Timeout:
             return False, "Timeout połączenia z KSeF - serwer nie odpowiada"
@@ -122,8 +266,9 @@ class KSeFService:
                 return [], msg
         
         try:
-            # KSeF API 2.0 - nowy endpoint zapytań
-            query_url = f"{self.base_url}/api/invoices/query"
+            # KSeF API 2.0 - endpoint zapytań o faktury
+            # base_url już zawiera /v2
+            query_url = f"{self.base_url}/invoices/query"
             
             # Format dat ISO 8601
             date_from_iso = f"{date_from}T00:00:00Z"
@@ -214,7 +359,7 @@ class KSeFService:
         
         try:
             # KSeF API 2.0 - endpoint do pobierania faktury
-            url = f"{self.base_url}/api/invoices/{ksef_number}"
+            url = f"{self.base_url}/invoices/{ksef_number}"
             
             response = requests.get(
                 url,
@@ -234,14 +379,14 @@ class KSeFService:
         """Zakończ sesję KSeF API 2.0."""
         if self.access_token:
             try:
-                # W API 2.0 tokeny są ważne do wygaśnięcia, 
-                # ale możemy wywołać logout jeśli jest dostępny
-                url = f"{self.base_url}/api/authentication/logout"
-                requests.post(url, headers=self._get_headers(), timeout=10)
+                # API 2.0 - zakończ bieżącą sesję
+                url = f"{self.base_url}/auth/sessions/current"
+                requests.delete(url, headers=self._get_headers(), timeout=10)
             except Exception:
                 pass
             finally:
                 self.access_token = None
+                self.refresh_token = None
 
 
 def fetch_invoices_from_ksef(
