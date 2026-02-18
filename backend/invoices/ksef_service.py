@@ -74,15 +74,25 @@ class KSeFService:
                 # Szukamy certyfikatu do szyfrowania tokenów (KsefTokenEncryption)
                 for cert in data.get('certificates', []):
                     if cert.get('usage') == 'KsefTokenEncryption':
-                        return base64.b64decode(cert.get('certificate', ''))
+                        cert_b64 = cert.get('certificate', '')
+                        # Dodaj nagłówek/stopkę PEM jeśli nie ma
+                        if not cert_b64.startswith('-----'):
+                            cert_pem = f"-----BEGIN CERTIFICATE-----\n{cert_b64}\n-----END CERTIFICATE-----"
+                            return cert_pem.encode('utf-8')
+                        return cert_b64.encode('utf-8')
             return None
         except Exception as e:
             print(f"Błąd pobierania klucza publicznego: {e}")
             return None
     
-    def _encrypt_token(self, token: str, timestamp: str, public_key_pem: bytes) -> Optional[str]:
+    def _encrypt_token(self, token: str, timestamp: str) -> Optional[str]:
         """Zaszyfruj token z timestamp używając RSA-OAEP."""
         try:
+            # Pobierz klucz publiczny
+            public_key_pem = self._get_public_key()
+            if not public_key_pem:
+                return None
+            
             # Parsuj certyfikat i wyciągnij klucz publiczny
             cert = load_pem_x509_certificate(public_key_pem, default_backend())
             public_key = cert.public_key()
@@ -149,9 +159,13 @@ class KSeFService:
             if not challenge or not timestamp:
                 return False, f"Brak challenge lub timestamp w odpowiedzi: {challenge_data}"
             
-            # Krok 2: Pobierz klucz publiczny i zaszyfruj token
-            # W środowisku testowym token może być przekazany niezaszyfrowany
-            # ale dla pełnej kompatybilności próbujemy zaszyfrować
+            # Krok 2: Zaszyfruj token z timestamp
+            encrypted_token = self._encrypt_token(self.token, timestamp)
+            
+            if not encrypted_token:
+                # Jeśli szyfrowanie się nie powiodło, spróbuj wysłać token w base64
+                # (niektóre środowiska testowe mogą to akceptować)
+                encrypted_token = base64.b64encode(f"{self.token}|{timestamp}".encode('utf-8')).decode('utf-8')
             
             # Krok 3: Wyślij token do autoryzacji
             auth_url = f"{self.base_url}/auth/ksef-token"
@@ -161,7 +175,7 @@ class KSeFService:
                     "type": "nip", 
                     "value": self.nip
                 },
-                "encryptedToken": self.token,  # W produkcji powinno być zaszyfrowane
+                "encryptedToken": encrypted_token,
                 "challenge": challenge
             }
             
