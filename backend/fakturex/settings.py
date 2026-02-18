@@ -130,13 +130,13 @@ SIMPLE_JWT = {
 # SECURITY SETTINGS FOR PRODUCTION
 # ==========================================
 
-# HTTPS/SSL Settings
+# HTTPS/SSL Settings - Railway handles SSL at edge
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Only enable strict security in production
 if not DEBUG:
-    # HTTPS Redirect
-    SECURE_SSL_REDIRECT = True
+    # Don't redirect - Railway handles SSL at the edge
+    # SECURE_SSL_REDIRECT = True
     
     # Secure Cookie settings
     SESSION_COOKIE_SECURE = True

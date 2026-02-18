@@ -13,8 +13,13 @@ def api_root(request):
         }
     })
 
+def health_check(request):
+    """Simple health check endpoint for Railway"""
+    return JsonResponse({'status': 'healthy'})
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', health_check, name='health-check'),
     path('api/', api_root, name='api-root'),
     path('api/invoices/', include('invoices.urls')),
     path('api/', include('customers.urls')),  # contractors/ i settings/
