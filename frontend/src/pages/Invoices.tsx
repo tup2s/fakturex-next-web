@@ -239,7 +239,7 @@ const Invoices: React.FC = () => {
                         ×
                     </button>
                 </div>
-            )
+            )}
 
             {/* Filtry */}
             <div className="card" style={{ marginBottom: '20px' }}>
