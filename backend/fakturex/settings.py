@@ -114,14 +114,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
-    },
 }
 
 # Simple JWT settings
@@ -166,13 +158,11 @@ if not DEBUG:
 
 # Session security
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Session expiry (2 hours of inactivity)
 SESSION_COOKIE_AGE = 7200
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # Password validation with stronger requirements
 AUTH_PASSWORD_VALIDATORS = [
