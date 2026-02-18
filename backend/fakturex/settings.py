@@ -107,14 +107,14 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # CORS settings
 CORS_ALLOWED_ORIGINS = os.environ.get(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173'
+    'http://localhost:5173,http://127.0.0.1:5173,https://fakturex.up.railway.app'
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF settings for Railway
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:5173'
+    'http://localhost:5173,https://fakturex.up.railway.app,https://fakturex-backend.up.railway.app'
 ).split(',')
 
 # Default primary key field type
