@@ -200,27 +200,47 @@ class KSeFService:
             if not reference_number:
                 return False, f"Brak referenceNumber w odpowiedzi: {auth_data}"
             
-            # Krok 4: Sprawdź status autoryzacji (polling)
-            status_url = f"{self.base_url}/auth/{reference_number}"
-            max_attempts = 10
+            if not auth_token:
+                return False, f"Brak authenticationToken w odpowiedzi: {auth_data}"
             
-            for attempt in range(max_attempts):
-                time.sleep(1)  # Czekaj sekundę między próbami
+            # Krok 4: Sprawdź status autoryzacji (polling)
+            # Jeśli odpowiedź z kroku 3 ma status 200/201, możemy od razu przejść do redeem
+            auth_status = auth_data.get('status') or auth_response.status_code
+            
+            if auth_status not in [200, 201]:
+                # Polling dla statusu 202 (Accepted - w trakcie przetwarzania)
+                status_url = f"{self.base_url}/auth/{reference_number}"
+                max_attempts = 15
                 
-                status_response = requests.get(
-                    status_url,
-                    headers={'Authorization': f'Bearer {auth_token}'} if auth_token else {},
-                    timeout=30
-                )
-                
-                if status_response.status_code == 200:
-                    status_data = status_response.json()
-                    if status_data.get('status') == 200:
+                for attempt in range(max_attempts):
+                    time.sleep(1)  # Czekaj sekundę między próbami
+                    
+                    status_headers = {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': f'Bearer {auth_token}'
+                    }
+                    
+                    status_response = requests.get(
+                        status_url,
+                        headers=status_headers,
+                        timeout=30
+                    )
+                    
+                    if status_response.status_code == 200:
+                        try:
+                            status_data = status_response.json()
+                            if status_data.get('status') == 200 or status_data.get('processingCode') == 200:
+                                break
+                        except json.JSONDecodeError:
+                            pass
+                    elif status_response.status_code == 202:
+                        continue  # W trakcie przetwarzania
+                    elif status_response.status_code == 401:
+                        # Token mógł wygasnąć - spróbuj od razu redeem
                         break
-                elif status_response.status_code == 202:
-                    continue  # W trakcie przetwarzania
-                else:
-                    return False, f"Błąd sprawdzania statusu (HTTP {status_response.status_code})"
+                    else:
+                        return False, f"Błąd sprawdzania statusu (HTTP {status_response.status_code}): {status_response.text[:200]}"
             
             # Krok 5: Wymień auth token na access token
             redeem_url = f"{self.base_url}/auth/token/redeem"
