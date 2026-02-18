@@ -2,6 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Navbar from './components/common/Navbar';
 import Sidebar from './components/common/Sidebar';
+import MobileNav from './components/common/MobileNav';
 import Dashboard from './pages/Dashboard';
 import Invoices from './pages/Invoices';
 import Contractors from './pages/Contractors';
@@ -57,6 +58,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {children}
         </div>
       </div>
+      <MobileNav />
     </div>
   );
 };

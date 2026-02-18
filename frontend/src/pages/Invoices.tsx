@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Invoice, InvoiceFormData, Contractor } from '../types';
 import { 
     fetchInvoices, 
@@ -33,10 +33,111 @@ const Invoices: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [ksefLoading, setKsefLoading] = useState(false);
     const [ksefMessage, setKsefMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+    const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
     useEffect(() => {
         loadData();
     }, []);
+
+    // Skróty klawiszowe
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignoruj gdy focus jest w input/textarea
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
+                return;
+            }
+
+            // Esc - zamknij modal/podgląd
+            if (e.key === 'Escape') {
+                if (previewInvoice) {
+                    setPreviewInvoice(null);
+                } else if (showModal) {
+                    handleCloseModal();
+                }
+                return;
+            }
+
+            // Nie obsługuj gdy modal jest otwarty
+            if (showModal || previewInvoice) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'n':
+                    // N - nowa faktura
+                    e.preventDefault();
+                    handleOpenModal();
+                    break;
+                case 'k':
+                    // K - pobierz z KSeF
+                    e.preventDefault();
+                    if (!ksefLoading) handleFetchFromKSeF();
+                    break;
+                case 'arrowdown':
+                case 'j':
+                    // ↓ lub J - następna faktura
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.min(prev + 1, filteredInvoices.length - 1));
+                    break;
+                case 'arrowup':
+                case 'k':
+                    // ↑ lub K - poprzednia faktura (tylko gdy nie pobieramy z KSeF)
+                    if (e.key === 'k' && !e.shiftKey) break; // 'k' używane do KSeF
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.max(prev - 1, 0));
+                    break;
+                case 'enter':
+                case ' ':
+                    // Enter/Spacja - podgląd wybranej faktury
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
+                        setPreviewInvoice(filteredInvoices[selectedIndex]);
+                    }
+                    break;
+                case 'e':
+                    // E - edytuj wybraną fakturę
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
+                        handleOpenModal(filteredInvoices[selectedIndex]);
+                    }
+                    break;
+                case 'p':
+                    // P - oznacz jako zapłaconą/niezapłaconą
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
+                        handleToggleStatus(filteredInvoices[selectedIndex]);
+                    }
+                    break;
+                case '1':
+                    // 1 - wszystkie
+                    e.preventDefault();
+                    setFilter('all');
+                    break;
+                case '2':
+                    // 2 - niezapłacone
+                    e.preventDefault();
+                    setFilter('niezaplacona');
+                    break;
+                case '3':
+                    // 3 - zapłacone
+                    e.preventDefault();
+                    setFilter('zaplacona');
+                    break;
+                case '4':
+                    // 4 - przeterminowane
+                    e.preventDefault();
+                    setFilter('overdue');
+                    break;
+                case '/':
+                    // / - szukaj
+                    e.preventDefault();
+                    document.getElementById('search-input')?.focus();
+                    break;
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [showModal, previewInvoice, selectedIndex, filteredInvoices, ksefLoading]);
 
     const loadData = async () => {
         try {
@@ -246,9 +347,10 @@ const Invoices: React.FC = () => {
                 <div className="card-body" style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div className="form-group" style={{ margin: 0, flex: '1', minWidth: '200px' }}>
                         <input
+                            id="search-input"
                             type="text"
                             className="form-control"
-                            placeholder="Szukaj po numerze lub dostawcy..."
+                            placeholder="Szukaj po numerze lub dostawcy... (wciśnij /)"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -308,8 +410,14 @@ const Invoices: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredInvoices.map((invoice) => (
-                                    <tr key={invoice.id}>
+                                filteredInvoices.map((invoice, index) => (
+                                    <tr 
+                                        key={invoice.id}
+                                        className={selectedIndex === index ? 'selected' : ''}
+                                        onClick={() => setSelectedIndex(index)}
+                                        onDoubleClick={() => setPreviewInvoice(invoice)}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                         <td><strong>{invoice.numer}</strong></td>
                                         <td>{invoice.data}</td>
                                         <td>{invoice.dostawca}</td>
@@ -336,7 +444,7 @@ const Invoices: React.FC = () => {
                                                     invoice.status === 'zaplacona' ? 'status-zaplacona' : 'status-niezaplacona'
                                                 }`}
                                                 style={{ cursor: 'pointer' }}
-                                                onClick={() => handleToggleStatus(invoice)}
+                                                onClick={(e) => { e.stopPropagation(); handleToggleStatus(invoice); }}
                                                 title="Kliknij, aby zmienić status"
                                             >
                                                 {invoice.is_overdue ? 'Przeterminowana' :
@@ -346,14 +454,23 @@ const Invoices: React.FC = () => {
                                         <td>
                                             <div className="table-actions">
                                                 <button 
+                                                    className="btn btn-sm btn-icon"
+                                                    onClick={(e) => { e.stopPropagation(); setPreviewInvoice(invoice); }}
+                                                    title="Podgląd (Enter)"
+                                                >
+                                                    👁
+                                                </button>
+                                                <button 
                                                     className="btn btn-sm btn-secondary"
-                                                    onClick={() => handleOpenModal(invoice)}
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(invoice); }}
+                                                    title="Edytuj (E)"
                                                 >
                                                     Edytuj
                                                 </button>
                                                 <button 
                                                     className="btn btn-sm btn-danger"
-                                                    onClick={() => handleDelete(invoice.id)}
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(invoice.id); }}
+                                                    title="Usuń"
                                                 >
                                                     Usuń
                                                 </button>
@@ -490,6 +607,98 @@ const Invoices: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal podglądu faktury */}
+            {previewInvoice && (
+                <div className="modal-overlay" onClick={() => setPreviewInvoice(null)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Podgląd faktury</h2>
+                            <button className="modal-close" onClick={() => setPreviewInvoice(null)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="invoice-preview">
+                                <div className="preview-header">
+                                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--accent-blue)' }}>
+                                        {previewInvoice.numer}
+                                    </h3>
+                                    <span className={`status ${
+                                        previewInvoice.is_overdue ? 'status-przeterminowana' :
+                                        previewInvoice.status === 'zaplacona' ? 'status-zaplacona' : 'status-niezaplacona'
+                                    }`}>
+                                        {previewInvoice.is_overdue ? 'Przeterminowana' :
+                                         previewInvoice.status === 'zaplacona' ? 'Zapłacona' : 'Niezapłacona'}
+                                    </span>
+                                </div>
+                                
+                                <div className="preview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Dostawca</p>
+                                        <p style={{ fontWeight: '600', margin: 0 }}>{previewInvoice.dostawca}</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Kwota</p>
+                                        <p style={{ fontWeight: '700', fontSize: '1.5rem', margin: 0, color: 'var(--accent-green)' }}>
+                                            {formatCurrency(previewInvoice.kwota)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Data wystawienia</p>
+                                        <p style={{ margin: 0 }}>{previewInvoice.data}</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Termin płatności</p>
+                                        <p style={{ margin: 0, color: previewInvoice.is_overdue ? 'var(--accent-red)' : 'inherit' }}>
+                                            {previewInvoice.termin_platnosci}
+                                            {previewInvoice.is_overdue && ' (przeterminowana)'}
+                                        </p>
+                                    </div>
+                                    {previewInvoice.ksef_numer && (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Numer KSeF</p>
+                                            <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                                {previewInvoice.ksef_numer}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {previewInvoice.notatki && (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '4px' }}>Notatki</p>
+                                            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{previewInvoice.notatki}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button 
+                                className="btn btn-secondary" 
+                                onClick={() => {
+                                    handleToggleStatus(previewInvoice);
+                                    setPreviewInvoice(null);
+                                }}
+                            >
+                                {previewInvoice.status === 'zaplacona' ? 'Oznacz jako niezapłaconą' : 'Oznacz jako zapłaconą'}
+                            </button>
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={() => {
+                                    handleOpenModal(previewInvoice);
+                                    setPreviewInvoice(null);
+                                }}
+                            >
+                                Edytuj
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pomoc - skróty klawiszowe (ukryte na mobile) */}
+            <div className="keyboard-shortcuts-help">
+                <strong style={{ color: 'var(--text-primary)' }}>Skróty:</strong>{' '}
+                <kbd>N</kbd> Nowa · <kbd>K</kbd> KSeF · <kbd>↑↓</kbd> Nawigacja · <kbd>Enter</kbd> Podgląd · <kbd>E</kbd> Edytuj · <kbd>P</kbd> Płatność · <kbd>/</kbd> Szukaj
+            </div>
         </div>
     );
 };

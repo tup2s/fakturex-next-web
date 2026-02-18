@@ -101,46 +101,73 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         Pobierz faktury z KSeF.
         Wymaga skonfigurowanego tokenu KSeF w ustawieniach.
         """
-        from customers.models import CompanySettings
-        import requests
+        from customers.models import Settings
+        from customers.encryption import decrypt_token
+        from .ksef_service import fetch_invoices_from_ksef
         from datetime import datetime, timedelta
         
         try:
-            settings = CompanySettings.objects.first()
+            settings = Settings.objects.first()
             if not settings or not settings.ksef_token:
                 return Response(
                     {'error': 'Brak skonfigurowanego tokenu KSeF. Przejdź do Ustawień i dodaj token.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Środowisko KSeF
-            ksef_urls = {
-                'production': 'https://ksef.mf.gov.pl/api',
-                'test': 'https://ksef-test.mf.gov.pl/api',
-                'demo': 'https://ksef-demo.mf.gov.pl/api'
-            }
-            base_url = ksef_urls.get(settings.ksef_environment, ksef_urls['test'])
+            if not settings.firma_nip:
+                return Response(
+                    {'error': 'Brak NIP firmy w ustawieniach. Przejdź do Ustawień i dodaj NIP.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            # Zakres dat - ostatnie 30 dni
+            # Odszyfruj token
+            token = decrypt_token(settings.ksef_token)
+            
+            # Zakres dat
             date_from = request.data.get('date_from', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
             date_to = request.data.get('date_to', datetime.now().strftime('%Y-%m-%d'))
             
-            # W rzeczywistej implementacji tutaj byłaby pełna integracja z API KSeF
-            # Na razie zwracamy komunikat informacyjny
+            # Pobierz faktury z KSeF
+            invoices_data, message = fetch_invoices_from_ksef(
+                token=token,
+                nip=settings.firma_nip,
+                environment=settings.ksef_environment,
+                date_from=date_from,
+                date_to=date_to
+            )
             
-            # TODO: Pełna implementacja API KSeF
-            # 1. Autoryzacja tokenem
-            # 2. Pobranie listy faktur za okres
-            # 3. Parsowanie XML faktur
-            # 4. Import do bazy danych
+            # Importuj faktury do bazy
+            imported_count = 0
+            skipped_count = 0
+            
+            for inv_data in invoices_data:
+                # Sprawdź czy faktura już istnieje
+                if Invoice.objects.filter(ksef_numer=inv_data['ksef_numer']).exists():
+                    skipped_count += 1
+                    continue
+                
+                # Utwórz fakturę
+                Invoice.objects.create(
+                    numer=inv_data['numer'],
+                    data=inv_data['data'],
+                    kwota=inv_data['kwota'],
+                    dostawca=inv_data['dostawca'],
+                    termin_platnosci=inv_data['data'],  # Domyślnie data faktury
+                    status='niezaplacona',
+                    ksef_numer=inv_data['ksef_numer'],
+                )
+                imported_count += 1
             
             return Response({
-                'message': f'Funkcja pobierania z KSeF ({settings.ksef_environment}). Zakres: {date_from} - {date_to}',
-                'info': 'Pełna integracja z API KSeF wymaga dodatkowej konfiguracji i certyfikatów.',
+                'message': message,
                 'settings_configured': True,
                 'environment': settings.ksef_environment,
                 'nip': settings.firma_nip,
-                'imported_count': 0
+                'date_from': date_from,
+                'date_to': date_to,
+                'imported_count': imported_count,
+                'skipped_count': skipped_count,
+                'total_found': len(invoices_data)
             })
             
         except Exception as e:
