@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Invoice, InvoiceFormData, Contractor } from '../types';
 import { 
     fetchInvoices, 
@@ -35,6 +35,27 @@ const Invoices: React.FC = () => {
     const [ksefMessage, setKsefMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+    // Filter and search - must be before keyboard shortcuts useEffect
+    const filteredInvoices = useMemo(() => {
+        return invoices.filter(invoice => {
+            // Filter by status
+            if (filter === 'niezaplacona' && invoice.status !== 'niezaplacona') return false;
+            if (filter === 'zaplacona' && invoice.status !== 'zaplacona') return false;
+            if (filter === 'overdue' && !invoice.is_overdue) return false;
+            
+            // Search
+            if (searchTerm) {
+                const search = searchTerm.toLowerCase();
+                return (
+                    invoice.numer.toLowerCase().includes(search) ||
+                    invoice.dostawca.toLowerCase().includes(search)
+                );
+            }
+            
+            return true;
+        });
+    }, [invoices, filter, searchTerm]);
 
     useEffect(() => {
         loadData();
@@ -279,25 +300,6 @@ const Invoices: React.FC = () => {
             });
         }
     };
-
-    // Filter and search
-    const filteredInvoices = invoices.filter(invoice => {
-        // Filter by status
-        if (filter === 'niezaplacona' && invoice.status !== 'niezaplacona') return false;
-        if (filter === 'zaplacona' && invoice.status !== 'zaplacona') return false;
-        if (filter === 'overdue' && !invoice.is_overdue) return false;
-        
-        // Search
-        if (searchTerm) {
-            const search = searchTerm.toLowerCase();
-            return (
-                invoice.numer.toLowerCase().includes(search) ||
-                invoice.dostawca.toLowerCase().includes(search)
-            );
-        }
-        
-        return true;
-    });
 
     if (loading) {
         return (
