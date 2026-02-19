@@ -218,6 +218,89 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             }, status=500)
 
     @action(detail=False, methods=['post'])
+    def ksef_test_fetch(self, request):
+        """
+        Test pobierania faktur z KSeF z pełnym logowaniem.
+        """
+        from customers.models import Settings
+        from customers.encryption import decrypt_token
+        from .ksef_service import KSeFService, KSEF2_AVAILABLE
+        from datetime import datetime, timedelta
+        import logging
+        import io
+        import sys
+        
+        # Capture logs
+        log_capture = io.StringIO()
+        handler = logging.StreamHandler(log_capture)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(logging.Formatter('%(levelname)s|%(name)s|%(message)s'))
+        
+        # Add handler to ksef logger
+        ksef_logger = logging.getLogger('invoices.ksef_service')
+        ksef_logger.addHandler(handler)
+        ksef_logger.setLevel(logging.DEBUG)
+        
+        result = {
+            'ksef2_available': KSEF2_AVAILABLE,
+            'steps': [],
+            'logs': '',
+            'invoices': [],
+            'error': None
+        }
+        
+        try:
+            result['steps'].append('1. Loading settings')
+            settings = Settings.objects.first()
+            
+            if not settings or not settings.ksef_token:
+                result['error'] = 'No KSeF token configured'
+                return Response(result)
+            
+            result['steps'].append('2. Decrypting token')
+            token = decrypt_token(settings.ksef_token)
+            
+            date_from = request.data.get('date_from', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+            date_to = request.data.get('date_to', datetime.now().strftime('%Y-%m-%d'))
+            result['date_range'] = f'{date_from} to {date_to}'
+            
+            result['steps'].append('3. Creating KSeFService')
+            service = KSeFService(token, settings.firma_nip, settings.ksef_environment)
+            result['environment'] = settings.ksef_environment
+            result['base_url'] = service.base_url
+            
+            result['steps'].append('4. Authorizing')
+            success, auth_msg = service.authorize()
+            result['auth_success'] = success
+            result['auth_message'] = auth_msg
+            
+            if not success:
+                result['error'] = f'Auth failed: {auth_msg}'
+                return Response(result)
+            
+            result['steps'].append('5. Fetching invoices')
+            invoices, fetch_msg = service.fetch_invoices(date_from, date_to)
+            result['fetch_message'] = fetch_msg
+            result['invoice_count'] = len(invoices)
+            result['invoices'] = invoices[:5]  # First 5 only
+            
+            result['steps'].append('6. Terminating session')
+            service.terminate_session()
+            
+            result['steps'].append('7. Done')
+            
+        except Exception as e:
+            import traceback
+            result['error'] = str(e)
+            result['traceback'] = traceback.format_exc()
+        finally:
+            # Get captured logs
+            ksef_logger.removeHandler(handler)
+            result['logs'] = log_capture.getvalue()
+        
+        return Response(result)
+
+    @action(detail=False, methods=['post'])
     def fetch_from_ksef(self, request):
         """
         Pobierz faktury z KSeF - zwraca podgląd do wyboru, nie zapisuje.
