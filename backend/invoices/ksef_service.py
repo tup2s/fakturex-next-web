@@ -215,11 +215,15 @@ class KSeFService:
         try:
             from ksef2.domain.models import FormSchema
             
+            logger.info(f"KSeF fetch: opening online session for export, dates={date_from} to {date_to}")
+            
             # Otwórz sesję online do eksportu
             with self._client.sessions.open_online(
                 access_token=self._auth.access_token,
                 form_code=FormSchema.FA3,
             ) as session:
+                
+                logger.info(f"KSeF fetch: session opened, preparing filters")
                 
                 # Przygotuj filtry
                 from_dt = datetime.strptime(date_from, '%Y-%m-%d').replace(tzinfo=timezone.utc)
@@ -236,11 +240,17 @@ class KSeFService:
                     ),
                 )
                 
+                logger.info(f"KSeF fetch: scheduling export with filters")
+                
                 # Zaplanuj eksport
                 export = session.schedule_invoices_export(filters=filters)
                 
+                logger.info(f"KSeF fetch: export scheduled, ref={export.reference_number}, getting status")
+                
                 # Poczekaj na wynik
                 export_result = session.get_export_status(export.reference_number)
+                
+                logger.info(f"KSeF fetch: export status received, has_package={export_result.package is not None}")
                 
                 invoices = []
                 if export_result.package:
@@ -249,14 +259,17 @@ class KSeFService:
                         package=export_result.package, 
                         target_directory="/tmp/ksef_export"
                     ):
+                        logger.info(f"KSeF fetch: downloaded file {path}")
                         # Parsuj pobrany plik
                         invoices.extend(self._parse_export_file(path))
                 
+                logger.info(f"KSeF fetch: SUCCESS, parsed {len(invoices)} invoices")
                 return invoices, f"Pobrano {len(invoices)} faktur (ksef2 SDK)"
                 
         except Exception as e:
-            logger.error(f"Błąd pobierania z ksef2: {e}")
+            logger.error(f"Błąd pobierania z ksef2: {e}", exc_info=True)
             # Fallback do prostego API
+            logger.info("KSeF fetch: falling back to simple API")
             return self._fetch_fallback(date_from, date_to, subject_type)
     
     def _fetch_fallback(
@@ -276,6 +289,8 @@ class KSeFService:
         try:
             query_url = f"{self.base_url}/invoices/query"
             
+            logger.info(f"KSeF fallback: calling {query_url}")
+            
             payload = {
                 "queryCriteria": {
                     "subjectType": subject_type,
@@ -289,6 +304,8 @@ class KSeFService:
                 "pageOffset": 0
             }
             
+            logger.info(f"KSeF fallback: payload={payload}")
+            
             response = requests.post(
                 query_url,
                 json=payload,
@@ -299,6 +316,8 @@ class KSeFService:
                 },
                 timeout=60
             )
+            
+            logger.info(f"KSeF fallback: response status={response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
@@ -313,9 +332,11 @@ class KSeFService:
             elif response.status_code == 401:
                 return [], "Błąd autoryzacji (401): Token wygasł lub jest nieprawidłowy."
             else:
+                logger.error(f"KSeF fallback error: {response.status_code} - {response.text[:500]}")
                 return [], f"Błąd zapytania (HTTP {response.status_code}): {response.text[:200]}"
                 
         except Exception as e:
+            logger.error(f"KSeF fallback exception: {e}", exc_info=True)
             return [], f"Błąd pobierania faktur: {str(e)}"
     
     def _parse_export_file(self, path: str) -> List[Dict]:
