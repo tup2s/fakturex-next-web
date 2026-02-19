@@ -710,6 +710,12 @@ select option {
     font-size: 0.85rem;
   }
   
+  .table.compact th,
+  .table.compact td {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+  }
+  
   /* Modal na pełny ekran */
   .modal-overlay {
     padding: 0;
