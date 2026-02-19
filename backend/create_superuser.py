@@ -1,13 +1,27 @@
 import os
 import django
+import sys
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fakturex.settings')
 django.setup()
 
 from django.contrib.auth import get_user_model
-from customers.models import Settings
+from django.db import connection
 
 User = get_user_model()
+
+print("=== Database info ===")
+print(f"Database: {connection.settings_dict['ENGINE']}")
+print(f"Name: {connection.settings_dict.get('NAME', 'N/A')}")
+
+# Sprawdź czy tabela auth_user istnieje
+try:
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM auth_user")
+        count = cursor.fetchone()[0]
+        print(f"Users in auth_user table: {count}")
+except Exception as e:
+    print(f"Error checking table: {e}")
 
 # Pokaż istniejących użytkowników
 print("=== Existing users ===")
@@ -19,25 +33,36 @@ username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'krzysztof')
 email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'krzysztof@fakturex.pl')
 password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'magia2')
 
-user, created = User.objects.get_or_create(username=username, defaults={
-    'email': email,
-    'is_staff': True,
-    'is_superuser': True,
-})
+print(f"=== Creating user: {username} ===")
 
-if created:
-    user.set_password(password)
-    user.save()
-    print(f'Superuser {username} created with password')
-else:
-    # Zawsze resetuj hasło do domyślnego
-    user.set_password(password)
-    user.is_staff = True
-    user.is_superuser = True
-    user.save()
-    print(f'Superuser {username} already exists - password reset to default')
+try:
+    user, created = User.objects.get_or_create(username=username, defaults={
+        'email': email,
+        'is_staff': True,
+        'is_superuser': True,
+    })
 
-# Pokaż użytkowników po zmianach
+    if created:
+        user.set_password(password)
+        user.save()
+        print(f'SUCCESS: Superuser {username} created with password')
+    else:
+        # Zawsze resetuj hasło do domyślnego
+        user.set_password(password)
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        print(f'SUCCESS: Superuser {username} already exists - password reset to default')
+    
+    # Weryfikacja
+    final_count = User.objects.count()
+    print(f"=== Final user count: {final_count} ===")
+    
+except Exception as e:
+    print(f"ERROR creating user: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 print("=== Users after setup ===")
 for u in User.objects.all():
     print(f"  - {u.username} (id={u.id}, is_superuser={u.is_superuser})")
