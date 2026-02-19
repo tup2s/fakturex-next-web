@@ -8,7 +8,8 @@ import {
     updateInvoice, 
     deleteInvoice,
     markInvoicePaid,
-    markInvoiceUnpaid
+    markInvoiceUnpaid,
+    fetchAvailableYears
 } from '../services/api';
 
 const emptyForm: InvoiceFormData = {
@@ -34,6 +35,26 @@ const Invoices: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+    
+    // Date filters
+    const [availableYears, setAvailableYears] = useState<number[]>([]);
+    const [selectedYear, setSelectedYear] = useState<number | null>(null);
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+    
+    const months = [
+        { value: 1, label: 'Styczeń' },
+        { value: 2, label: 'Luty' },
+        { value: 3, label: 'Marzec' },
+        { value: 4, label: 'Kwiecień' },
+        { value: 5, label: 'Maj' },
+        { value: 6, label: 'Czerwiec' },
+        { value: 7, label: 'Lipiec' },
+        { value: 8, label: 'Sierpień' },
+        { value: 9, label: 'Wrzesień' },
+        { value: 10, label: 'Październik' },
+        { value: 11, label: 'Listopad' },
+        { value: 12, label: 'Grudzień' },
+    ];
 
     // Filter and search - must be before keyboard shortcuts useEffect
     const filteredInvoices = useMemo(() => {
@@ -57,8 +78,15 @@ const Invoices: React.FC = () => {
     }, [invoices, filter, searchTerm]);
 
     useEffect(() => {
-        loadData();
+        loadInitialData();
     }, []);
+    
+    // Reload invoices when year/month changes
+    useEffect(() => {
+        if (!loading) {
+            loadInvoices();
+        }
+    }, [selectedYear, selectedMonth]);
 
     // Skróty klawiszowe
     useEffect(() => {
@@ -178,18 +206,32 @@ const Invoices: React.FC = () => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [showModal, previewInvoice, selectedIndex, filteredInvoices, navigate]);
 
-    const loadData = async () => {
+    const loadInitialData = async () => {
         try {
-            const [invoicesData, contractorsData] = await Promise.all([
+            const [invoicesData, contractorsData, yearsData] = await Promise.all([
                 fetchInvoices(),
-                fetchContractors()
+                fetchContractors(),
+                fetchAvailableYears()
             ]);
             setInvoices(invoicesData);
             setContractors(contractorsData);
+            setAvailableYears(yearsData);
         } catch (error) {
             console.error('Błąd ładowania:', error);
         } finally {
             setLoading(false);
+        }
+    };
+    
+    const loadInvoices = async () => {
+        try {
+            const params: { year?: number; month?: number } = {};
+            if (selectedYear) params.year = selectedYear;
+            if (selectedMonth) params.month = selectedMonth;
+            const invoicesData = await fetchInvoices(params);
+            setInvoices(invoicesData);
+        } catch (error) {
+            console.error('Błąd ładowania faktur:', error);
         }
     };
 
@@ -246,7 +288,7 @@ const Invoices: React.FC = () => {
                 await createInvoice(data);
             }
             handleCloseModal();
-            loadData();
+            loadInvoices();
         } catch (error) {
             console.error('Błąd zapisywania:', error);
             alert('Wystąpił błąd podczas zapisywania faktury');
@@ -257,7 +299,7 @@ const Invoices: React.FC = () => {
         if (window.confirm('Czy na pewno chcesz usunąć tę fakturę?')) {
             try {
                 await deleteInvoice(id);
-                loadData();
+                loadInvoices();
             } catch (error) {
                 console.error('Błąd usuwania:', error);
             }
@@ -271,7 +313,7 @@ const Invoices: React.FC = () => {
             } else {
                 await markInvoicePaid(invoice.id);
             }
-            loadData();
+            loadInvoices();
         } catch (error) {
             console.error('Błąd zmiany statusu:', error);
         }
@@ -363,6 +405,30 @@ const Invoices: React.FC = () => {
                         >
                             Zapłacone
                         </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select 
+                            className="form-control" 
+                            value={selectedYear ?? ''} 
+                            onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
+                            style={{ width: '120px' }}
+                        >
+                            <option value="">Wszystkie lata</option>
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="form-control" 
+                            value={selectedMonth ?? ''} 
+                            onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
+                            style={{ width: '140px' }}
+                        >
+                            <option value="">Wszystkie miesiące</option>
+                            {months.map(m => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>

@@ -35,7 +35,32 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if dostawca:
             queryset = queryset.filter(dostawca__icontains=dostawca)
         
+        # Filtrowanie po roku
+        year = self.request.query_params.get('year')
+        if year:
+            queryset = queryset.filter(data__year=int(year))
+        
+        # Filtrowanie po miesiącu
+        month = self.request.query_params.get('month')
+        if month:
+            queryset = queryset.filter(data__month=int(month))
+        
         return queryset
+    
+    @action(detail=False, methods=['get'])
+    def available_years(self, request):
+        """
+        Zwraca listę lat, dla których istnieją faktury.
+        """
+        years = Invoice.objects.dates('data', 'year', order='DESC')
+        year_list = [d.year for d in years]
+        
+        # Dodaj bieżący rok jeśli nie ma
+        current_year = date.today().year
+        if current_year not in year_list:
+            year_list.insert(0, current_year)
+        
+        return Response({'years': year_list})
     
     @action(detail=False, methods=['get'])
     def stats(self, request):

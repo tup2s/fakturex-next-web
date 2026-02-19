@@ -98,9 +98,20 @@ export const getStoredUser = (): User | null => {
 
 // ============ FAKTURY ============
 
-export const fetchInvoices = async (params?: { status?: string; overdue?: string; dostawca?: string }): Promise<Invoice[]> => {
+export const fetchInvoices = async (params?: { 
+  status?: string; 
+  overdue?: string; 
+  dostawca?: string;
+  year?: number;
+  month?: number;
+}): Promise<Invoice[]> => {
   const response = await apiClient.get('/invoices/', { params });
   return response.data;
+};
+
+export const fetchAvailableYears = async (): Promise<number[]> => {
+  const response = await apiClient.get('/invoices/available_years/');
+  return response.data.years;
 };
 
 export const fetchInvoiceStats = async (): Promise<InvoiceStats> => {
