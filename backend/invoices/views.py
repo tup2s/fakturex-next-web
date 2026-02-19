@@ -98,7 +98,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def fetch_from_ksef(self, request):
         """
-        Pobierz faktury z KSeF.
+        Pobierz faktury z KSeF - zwraca podgląd do wyboru, nie zapisuje.
         Wymaga skonfigurowanego tokenu KSeF w ustawieniach.
         """
         from customers.models import Settings
@@ -136,27 +136,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 date_to=date_to
             )
             
-            # Importuj faktury do bazy
-            imported_count = 0
-            skipped_count = 0
-            
+            # Sprawdź które faktury już istnieją w bazie
             for inv_data in invoices_data:
-                # Sprawdź czy faktura już istnieje
-                if Invoice.objects.filter(ksef_numer=inv_data['ksef_numer']).exists():
-                    skipped_count += 1
-                    continue
-                
-                # Utwórz fakturę
-                Invoice.objects.create(
-                    numer=inv_data['numer'],
-                    data=inv_data['data'],
-                    kwota=inv_data['kwota'],
-                    dostawca=inv_data['dostawca'],
-                    termin_platnosci=inv_data['data'],  # Domyślnie data faktury
-                    status='niezaplacona',
-                    ksef_numer=inv_data['ksef_numer'],
-                )
-                imported_count += 1
+                inv_data['already_exists'] = Invoice.objects.filter(ksef_numer=inv_data['ksef_numer']).exists()
             
             return Response({
                 'message': message,
@@ -165,8 +147,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 'nip': settings.firma_nip,
                 'date_from': date_from,
                 'date_to': date_to,
-                'imported_count': imported_count,
-                'skipped_count': skipped_count,
+                'invoices': invoices_data,
                 'total_found': len(invoices_data)
             })
             
@@ -175,3 +156,43 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 {'error': f'Błąd podczas pobierania z KSeF: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=False, methods=['post'])
+    def import_ksef_invoices(self, request):
+        """
+        Importuj wybrane faktury z KSeF do bazy danych.
+        """
+        invoices_data = request.data.get('invoices', [])
+        
+        if not invoices_data:
+            return Response(
+                {'error': 'Nie wybrano żadnych faktur do importu.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        imported_count = 0
+        skipped_count = 0
+        
+        for inv_data in invoices_data:
+            # Sprawdź czy faktura już istnieje
+            if Invoice.objects.filter(ksef_numer=inv_data['ksef_numer']).exists():
+                skipped_count += 1
+                continue
+            
+            # Utwórz fakturę
+            Invoice.objects.create(
+                numer=inv_data['numer'],
+                data=inv_data['data'],
+                kwota=inv_data['kwota'],
+                dostawca=inv_data['dostawca'],
+                termin_platnosci=inv_data.get('termin_platnosci', inv_data['data']),
+                status='niezaplacona',
+                ksef_numer=inv_data['ksef_numer'],
+            )
+            imported_count += 1
+        
+        return Response({
+            'message': f'Zaimportowano {imported_count} faktur.',
+            'imported_count': imported_count,
+            'skipped_count': skipped_count
+        })

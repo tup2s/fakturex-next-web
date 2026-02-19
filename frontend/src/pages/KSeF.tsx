@@ -1,16 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { fetchFromKSeF, fetchSettings } from '../services/api';
+import { fetchFromKSeF, fetchSettings, importKSeFInvoices, KSeFInvoice } from '../services/api';
 import { Settings } from '../types';
-
-interface KSeFInvoice {
-    ksef_numer: string;
-    numer: string;
-    data: string;
-    kwota: number;
-    dostawca: string;
-    dostawca_nip: string;
-    termin_platnosci: string;
-}
 
 interface FetchResult {
     message: string;
@@ -18,10 +8,9 @@ interface FetchResult {
     settings_configured: boolean;
     environment?: string;
     nip?: string;
-    imported_count: number;
-    skipped_count?: number;
+    invoices: KSeFInvoice[];
+    total_found: number;
     error?: string;
-    invoices?: KSeFInvoice[];
 }
 
 const KSeF: React.FC = () => {
@@ -40,6 +29,8 @@ const KSeF: React.FC = () => {
     
     // Fetch results
     const [lastFetchResult, setLastFetchResult] = useState<FetchResult | null>(null);
+    const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
+    const [importLoading, setImportLoading] = useState(false);
 
     useEffect(() => {
         loadSettings();
@@ -67,6 +58,7 @@ const KSeF: React.FC = () => {
         setFetchLoading(true);
         setMessage(null);
         setLastFetchResult(null);
+        setSelectedInvoices(new Set());
         
         try {
             const result = await fetchFromKSeF(dateFrom, dateTo);
@@ -74,20 +66,18 @@ const KSeF: React.FC = () => {
             
             if (result.error) {
                 setMessage({ type: 'error', text: result.error });
-            } else if (result.imported_count > 0) {
+            } else if (result.invoices && result.invoices.length > 0) {
+                // Automatycznie zaznacz faktury, które jeszcze nie istnieją
+                const newInvoices = result.invoices.filter(inv => !inv.already_exists);
+                setSelectedInvoices(new Set(newInvoices.map(inv => inv.ksef_numer)));
                 setMessage({ 
                     type: 'success', 
-                    text: `Zaimportowano ${result.imported_count} faktur${result.imported_count === 1 ? 'ę' : result.imported_count < 5 ? 'y' : ''} do systemu.`
-                });
-            } else if (result.skipped_count && result.skipped_count > 0) {
-                setMessage({ 
-                    type: 'info', 
-                    text: `Wszystkie faktury (${result.skipped_count}) już istnieją w systemie.`
+                    text: `Znaleziono ${result.invoices.length} faktur. Wybierz które chcesz zaimportować.`
                 });
             } else {
                 setMessage({ 
                     type: 'info', 
-                    text: result.message || 'Brak nowych faktur w wybranym okresie.'
+                    text: result.message || 'Brak faktur w wybranym okresie.'
                 });
             }
         } catch (error: any) {
@@ -95,6 +85,67 @@ const KSeF: React.FC = () => {
             setMessage({ type: 'error', text: errorMsg });
         } finally {
             setFetchLoading(false);
+        }
+    };
+
+    const handleToggleInvoice = (ksefNumer: string) => {
+        setSelectedInvoices((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            if (newSet.has(ksefNumer)) {
+                newSet.delete(ksefNumer);
+            } else {
+                newSet.add(ksefNumer);
+            }
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (!lastFetchResult?.invoices) return;
+        const newInvoices = lastFetchResult.invoices.filter((inv: KSeFInvoice) => !inv.already_exists);
+        setSelectedInvoices(new Set(newInvoices.map((inv: KSeFInvoice) => inv.ksef_numer)));
+    };
+
+    const handleDeselectAll = () => {
+        setSelectedInvoices(new Set());
+    };
+
+    const handleImportSelected = async () => {
+        if (!lastFetchResult?.invoices || selectedInvoices.size === 0) return;
+        
+        setImportLoading(true);
+        setMessage(null);
+        
+        try {
+            const invoicesToImport = lastFetchResult.invoices.filter(
+                (inv: KSeFInvoice) => selectedInvoices.has(inv.ksef_numer) && !inv.already_exists
+            );
+            
+            const result = await importKSeFInvoices(invoicesToImport);
+            
+            setMessage({ 
+                type: 'success', 
+                text: `Zaimportowano ${result.imported_count} faktur do systemu.`
+            });
+            
+            // Odśwież listę - oznacz zaimportowane jako istniejące
+            setLastFetchResult((prev: FetchResult | null) => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    invoices: prev.invoices.map((inv: KSeFInvoice) => 
+                        selectedInvoices.has(inv.ksef_numer) 
+                            ? { ...inv, already_exists: true }
+                            : inv
+                    )
+                };
+            });
+            setSelectedInvoices(new Set());
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'Błąd podczas importu faktur.';
+            setMessage({ type: 'error', text: errorMsg });
+        } finally {
+            setImportLoading(false);
         }
     };
 
@@ -205,7 +256,7 @@ const KSeF: React.FC = () => {
                 
                 <p style={{ marginBottom: '20px', color: '#cbd5e0' }}>
                     Wybierz zakres dat, z którego chcesz pobrać faktury kosztowe z Krajowego Systemu e-Faktur.
-                    Pobrane faktury zostaną automatycznie zapisane w zakładce Faktury.
+                    Po pobraniu wybierz które faktury chcesz zaimportować do systemu.
                 </p>
                 
                 {!isConfigured && (
@@ -372,6 +423,135 @@ const KSeF: React.FC = () => {
                     >
                         &times;
                     </button>
+                </div>
+            )}
+
+            {/* Tabela pobranych faktur */}
+            {lastFetchResult?.invoices && lastFetchResult.invoices.length > 0 && (
+                <div className="card" style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', margin: 0 }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
+                            </svg>
+                            Pobrane faktury ({lastFetchResult.invoices.length})
+                        </h3>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button 
+                                className="btn btn-sm btn-secondary"
+                                onClick={handleSelectAll}
+                            >
+                                Zaznacz wszystkie
+                            </button>
+                            <button 
+                                className="btn btn-sm btn-secondary"
+                                onClick={handleDeselectAll}
+                            >
+                                Odznacz wszystkie
+                            </button>
+                            <button 
+                                className="btn btn-sm btn-primary"
+                                onClick={handleImportSelected}
+                                disabled={selectedInvoices.size === 0 || importLoading}
+                            >
+                                {importLoading ? (
+                                    <>
+                                        <span className="spinner" style={{ width: '14px', height: '14px', marginRight: '6px' }}></span>
+                                        Importowanie...
+                                    </>
+                                ) : (
+                                    `Importuj wybrane (${selectedInvoices.size})`
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="table" style={{ minWidth: '700px' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '40px', textAlign: 'center' }}></th>
+                                    <th>Numer faktury</th>
+                                    <th>Data</th>
+                                    <th>Dostawca</th>
+                                    <th style={{ textAlign: 'right' }}>Kwota</th>
+                                    <th>Numer KSeF</th>
+                                    <th style={{ textAlign: 'center' }}>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {lastFetchResult.invoices.map((invoice) => (
+                                    <tr 
+                                        key={invoice.ksef_numer}
+                                        style={{ 
+                                            opacity: invoice.already_exists ? 0.6 : 1,
+                                            background: selectedInvoices.has(invoice.ksef_numer) ? 'rgba(66, 153, 225, 0.15)' : 'transparent'
+                                        }}
+                                    >
+                                        <td style={{ textAlign: 'center' }}>
+                                            <input 
+                                                type="checkbox"
+                                                checked={selectedInvoices.has(invoice.ksef_numer)}
+                                                onChange={() => handleToggleInvoice(invoice.ksef_numer)}
+                                                disabled={invoice.already_exists}
+                                                style={{ 
+                                                    width: '18px', 
+                                                    height: '18px',
+                                                    cursor: invoice.already_exists ? 'not-allowed' : 'pointer'
+                                                }}
+                                            />
+                                        </td>
+                                        <td style={{ fontWeight: 500, color: '#ffffff' }}>{invoice.numer}</td>
+                                        <td style={{ color: '#e2e8f0' }}>{invoice.data}</td>
+                                        <td style={{ color: '#e2e8f0' }}>{invoice.dostawca}</td>
+                                        <td style={{ textAlign: 'right', fontWeight: 500, color: '#ffffff' }}>
+                                            {formatCurrency(invoice.kwota)}
+                                        </td>
+                                        <td style={{ color: '#a0aec0', fontSize: '12px', fontFamily: 'monospace' }}>
+                                            {invoice.ksef_numer}
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {invoice.already_exists ? (
+                                                <span style={{ 
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    padding: '4px 8px',
+                                                    background: 'rgba(160, 174, 192, 0.2)',
+                                                    borderRadius: '4px',
+                                                    fontSize: '12px',
+                                                    color: '#a0aec0'
+                                                }}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '14px', height: '14px' }}>
+                                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                                        <polyline points="22 4 12 14.01 9 11.01" />
+                                                    </svg>
+                                                    W bazie
+                                                </span>
+                                            ) : (
+                                                <span style={{ 
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    padding: '4px 8px',
+                                                    background: 'rgba(72, 187, 120, 0.2)',
+                                                    borderRadius: '4px',
+                                                    fontSize: '12px',
+                                                    color: '#48bb78'
+                                                }}>
+                                                    Nowa
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 

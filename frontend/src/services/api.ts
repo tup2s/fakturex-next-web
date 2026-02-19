@@ -137,20 +137,38 @@ export const markInvoiceUnpaid = async (id: number): Promise<Invoice> => {
   return response.data;
 };
 
+export interface KSeFInvoice {
+  numer: string;
+  data: string;
+  kwota: number;
+  dostawca: string;
+  ksef_numer: string;
+  already_exists: boolean;
+}
+
 export const fetchFromKSeF = async (dateFrom?: string, dateTo?: string): Promise<{
   message: string;
   info?: string;
   settings_configured: boolean;
   environment?: string;
   nip?: string;
-  imported_count: number;
-  skipped_count?: number;
+  invoices: KSeFInvoice[];
+  total_found: number;
   error?: string;
 }> => {
   const response = await apiClient.post('/invoices/fetch_from_ksef/', {
     date_from: dateFrom,
     date_to: dateTo
   });
+  return response.data;
+};
+
+export const importKSeFInvoices = async (invoices: KSeFInvoice[]): Promise<{
+  message: string;
+  imported_count: number;
+  skipped_count: number;
+}> => {
+  const response = await apiClient.post('/invoices/import_ksef_invoices/', { invoices });
   return response.data;
 };
 
