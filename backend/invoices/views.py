@@ -126,8 +126,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         Diagnostyka połączenia z KSeF - sprawdź konfigurację i autoryzację.
         """
         from customers.models import Settings
-        from customers.encryption import decrypt_token
+        from customers.encryption import decrypt_token, is_token_encrypted
         from .ksef_service import KSeFService, KSEF2_AVAILABLE, get_environment
+        from django.conf import settings as django_settings
+        import os
         import logging
         
         logger = logging.getLogger(__name__)
@@ -143,12 +145,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 'environment': settings.ksef_environment if settings else None,
                 'nip': settings.firma_nip if settings else None,
                 'token_length': len(settings.ksef_token) if settings and settings.ksef_token else 0,
+                'encryption_key_set': bool(getattr(django_settings, 'ENCRYPTION_KEY', None) or os.environ.get('ENCRYPTION_KEY')),
             }
             
             if settings and settings.ksef_token and settings.firma_nip:
-                token = decrypt_token(settings.ksef_token)
+                encrypted_token = settings.ksef_token
+                diag['token_is_encrypted'] = is_token_encrypted(encrypted_token)
+                diag['encrypted_token_starts'] = encrypted_token[:30] + '...' if len(encrypted_token) > 30 else encrypted_token
+                
+                token = decrypt_token(encrypted_token)
                 diag['decrypted_token_length'] = len(token)
-                diag['token_starts_with'] = token[:20] + '...' if len(token) > 20 else token
+                diag['decryption_worked'] = token != encrypted_token
+                diag['token_starts_with'] = token[:30] + '...' if len(token) > 30 else token
                 
                 # Spróbuj autoryzacji
                 service = KSeFService(token, settings.firma_nip, settings.ksef_environment)
