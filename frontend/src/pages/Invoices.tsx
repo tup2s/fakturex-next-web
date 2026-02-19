@@ -39,7 +39,6 @@ const Invoices: React.FC = () => {
     const [ksefPreviewData, setKsefPreviewData] = useState<KSeFInvoice | null>(null);
     const [loadingKsefData, setLoadingKsefData] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-    const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
     // Zawsze tryb kompaktowy
     const compactMode = true;
     
@@ -105,20 +104,11 @@ const Invoices: React.FC = () => {
 
             // Esc - zamknij modal/podgląd
             if (e.key === 'Escape') {
-                if (showShortcutsHelp) {
-                    setShowShortcutsHelp(false);
-                } else if (previewInvoice) {
+                if (previewInvoice) {
                     setPreviewInvoice(null);
                 } else if (showModal) {
                     handleCloseModal();
                 }
-                return;
-            }
-
-            // ? lub H - pokaż pomoc
-            if (e.key === '?' || (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.altKey)) {
-                e.preventDefault();
-                setShowShortcutsHelp(true);
                 return;
             }
 
@@ -220,7 +210,7 @@ const Invoices: React.FC = () => {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [showModal, previewInvoice, showShortcutsHelp, selectedIndex, filteredInvoices, navigate]);
+    }, [showModal, previewInvoice, selectedIndex, filteredInvoices, navigate]);
 
     const loadInitialData = async () => {
         try {
@@ -984,132 +974,6 @@ const Invoices: React.FC = () => {
                         </div>
                             </>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {/* Pomoc - skróty klawiszowe (ukryte na mobile) */}
-            <div className="keyboard-shortcuts-help">
-                <strong style={{ color: 'var(--text-primary)' }}>Skróty:</strong>{' '}
-                <kbd>N</kbd> Nowa · <kbd>K</kbd> KSeF · <kbd>↑↓</kbd> Nawigacja · <kbd>Enter</kbd> Podgląd · <kbd>E</kbd> Edytuj · <kbd>P</kbd> Płatność · <kbd>/</kbd> Szukaj · <kbd>?</kbd> Wszystkie
-            </div>
-
-            {/* Modal z legendą skrótów */}
-            {showShortcutsHelp && (
-                <div className="modal-overlay" onClick={() => setShowShortcutsHelp(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                        <div className="modal-header">
-                            <h3>Skróty klawiszowe</h3>
-                            <button className="modal-close" onClick={() => setShowShortcutsHelp(false)}>&times;</button>
-                        </div>
-                        <div className="modal-body" style={{ padding: '20px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                                {/* Nawigacja */}
-                                <div>
-                                    <h4 style={{ color: 'var(--primary)', marginBottom: '12px', fontSize: '14px', textTransform: 'uppercase' }}>Nawigacja</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>↑ / ↓</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Poprzednia / Następna faktura</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>J</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Następna faktura</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>Enter</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Podgląd wybranej</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>Spacja</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Podgląd wybranej</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>Esc</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Zamknij modal/podgląd</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Akcje */}
-                                <div>
-                                    <h4 style={{ color: 'var(--primary)', marginBottom: '12px', fontSize: '14px', textTransform: 'uppercase' }}>Akcje</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>N</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Nowa faktura</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>E</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Edytuj wybraną</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>P</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Zmień status płatności</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>K</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Przejdź do KSeF</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Filtry */}
-                                <div>
-                                    <h4 style={{ color: 'var(--primary)', marginBottom: '12px', fontSize: '14px', textTransform: 'uppercase' }}>Filtry</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>1</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Wszystkie faktury</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>2</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Niezapłacone</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>3</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Zapłacone</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>4</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Przeterminowane</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>/</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Szukaj</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Kopiowanie */}
-                                <div>
-                                    <h4 style={{ color: 'var(--primary)', marginBottom: '12px', fontSize: '14px', textTransform: 'uppercase' }}>Kopiowanie</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>C</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Kopiuj numer faktury</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <kbd style={{ minWidth: '50px' }}>W</kbd>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Kopiuj kwotę</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Pomoc */}
-                            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <div><kbd>?</kbd> lub <kbd>H</kbd></div>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Pokaż tę pomoc</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-primary" onClick={() => setShowShortcutsHelp(false)}>
-                                Zamknij
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

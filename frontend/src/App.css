@@ -1614,21 +1614,60 @@ kbd {
 
 /* Responsive Settings */
 @media (max-width: 768px) {
+  .settings-page {
+    padding: 12px;
+  }
+  
+  .settings-page .page-header {
+    margin-bottom: 16px;
+  }
+  
+  .settings-page .page-title {
+    font-size: 20px;
+  }
+  
   .settings-tabs {
-    padding: 2px;
+    padding: 4px;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .settings-tabs::-webkit-scrollbar {
+    display: none;
   }
   
   .settings-tab {
-    padding: 10px 14px;
-    font-size: 13px;
+    padding: 10px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
   }
   
-  .tab-label {
+  .tab-icon {
     display: none;
   }
   
   .settings-card {
     padding: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .settings-field .form-control {
+    max-width: 100%;
+  }
+  
+  .settings-row {
+    margin-bottom: 16px;
+  }
+  
+  .section-header {
+    margin-bottom: 16px;
+  }
+  
+  .section-header h2 {
+    font-size: 18px;
   }
   
   .account-info {
@@ -1636,20 +1675,76 @@ kbd {
     text-align: center;
   }
   
+  .account-avatar {
+    margin-bottom: 12px;
+  }
+  
+  .account-details {
+    text-align: center;
+  }
+  
   .about-features {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
   
   .user-item {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .user-info {
+    width: 100%;
   }
   
   .user-actions {
     width: 100%;
-    margin-top: 12px;
+    display: flex;
+    gap: 8px;
   }
   
   .user-actions .btn {
+    flex: 1;
+    padding: 8px 12px;
+  }
+  
+  .settings-actions {
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+  
+  .settings-actions .btn {
     width: 100%;
+  }
+  
+  /* Alert na mobile */
+  .settings-section .alert {
+    padding: 12px;
+    font-size: 13px;
+  }
+  
+  /* Tech info na mobile */
+  .tech-info {
+    font-size: 13px;
+  }
+  
+  .tech-row {
+    padding: 10px 0;
+  }
+  
+  /* Password strength on mobile */
+  .password-strength {
+    margin-top: 8px;
+  }
+  
+  /* Checkbox field on mobile */
+  .checkbox-label {
+    gap: 10px;
+  }
+  
+  .checkbox-text small {
+    font-size: 12px;
   }
 }
