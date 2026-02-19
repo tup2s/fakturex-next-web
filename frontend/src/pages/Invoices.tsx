@@ -35,14 +35,13 @@ const Invoices: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-    const [compactMode, setCompactMode] = useState<boolean>(() => {
-        return localStorage.getItem('invoicesCompactMode') === 'true';
-    });
+    // Zawsze tryb kompaktowy
+    const compactMode = true;
     
-    // Date filters
+    // Date filters - default to current month/year for faster loading
     const [availableYears, setAvailableYears] = useState<number[]>([]);
-    const [selectedYear, setSelectedYear] = useState<number | null>(null);
-    const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+    const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(() => new Date().getMonth() + 1);
     
     const months = [
         { value: 1, label: 'Styczeń' },
@@ -211,8 +210,11 @@ const Invoices: React.FC = () => {
 
     const loadInitialData = async () => {
         try {
+            // Pobierz faktury tylko z bieżącego miesiąca dla szybszego ładowania
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
             const [invoicesData, contractorsData, yearsData] = await Promise.all([
-                fetchInvoices(),
+                fetchInvoices({ year: currentYear, month: currentMonth }),
                 fetchContractors(),
                 fetchAvailableYears()
             ]);
@@ -407,17 +409,6 @@ const Invoices: React.FC = () => {
                             onClick={() => setFilter('zaplacona')}
                         >
                             Zapłacone
-                        </button>
-                        <button 
-                            className={`btn btn-sm ${compactMode ? 'btn-dark' : 'btn-outline-secondary'}`}
-                            onClick={() => {
-                                const newValue = !compactMode;
-                                setCompactMode(newValue);
-                                localStorage.setItem('invoicesCompactMode', String(newValue));
-                            }}
-                            title="Tryb kompaktowy"
-                        >
-                            ☰
                         </button>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

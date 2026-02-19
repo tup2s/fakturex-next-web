@@ -31,6 +31,9 @@ const KSeF: React.FC = () => {
     const [lastFetchResult, setLastFetchResult] = useState<FetchResult | null>(null);
     const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
     const [importLoading, setImportLoading] = useState(false);
+    
+    // Preview modal
+    const [previewInvoice, setPreviewInvoice] = useState<KSeFInvoice | null>(null);
 
     useEffect(() => {
         loadSettings();
@@ -481,6 +484,7 @@ const KSeF: React.FC = () => {
                                     <th style={{ textAlign: 'right' }}>Kwota</th>
                                     <th>Numer KSeF</th>
                                     <th style={{ textAlign: 'center' }}>Status</th>
+                                    <th style={{ textAlign: 'center' }}>Akcje</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -547,6 +551,18 @@ const KSeF: React.FC = () => {
                                                 </span>
                                             )}
                                         </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                className="btn btn-sm btn-secondary"
+                                                onClick={() => setPreviewInvoice(invoice)}
+                                                title="Podgląd"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '14px', height: '14px' }}>
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -555,36 +571,114 @@ const KSeF: React.FC = () => {
                 </div>
             )}
 
-            {/* Informacje o API 2.0 */}
-            <div className="card">
-                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                    </svg>
-                    Informacje o KSeF API 2.0
-                </h3>
-                
-                <div style={{ color: '#cbd5e0', lineHeight: 1.6 }}>
-                    <p style={{ marginBottom: '12px' }}>
-                        Aplikacja korzysta z nowej wersji API KSeF 2.0, która zastąpiła poprzednie API 1.0 
-                        (wyłączone 2 lutego 2026).
-                    </p>
-                    <p style={{ marginBottom: '12px' }}>
-                        <strong>Środowiska:</strong>
-                    </p>
-                    <ul style={{ paddingLeft: '20px', marginBottom: '12px' }}>
-                        <li><strong>Demo</strong> - do testów, bez rzeczywistych danych</li>
-                        <li><strong>Testowe</strong> - środowisko testowe z danymi testowymi</li>
-                        <li><strong>Produkcyjne</strong> - rzeczywiste faktury</li>
-                    </ul>
-                    <p>
-                        <strong>Uwaga:</strong> Token autoryzacyjny KSeF musi być wygenerowany dla API 2.0. 
-                        Stare tokeny z API 1.0 nie działają.
-                    </p>
+            {/* Preview Modal */}
+            {previewInvoice && (
+                <div className="modal-overlay" onClick={() => setPreviewInvoice(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                        <div className="modal-header">
+                            <h3>Podgląd faktury KSeF</h3>
+                            <button className="modal-close" onClick={() => setPreviewInvoice(null)}>&times;</button>
+                        </div>
+                        <div className="modal-body" id="ksef-invoice-print">
+                            <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                <h4 style={{ marginBottom: '16px', color: '#4299e1' }}>Dane faktury</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Numer faktury</div>
+                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.numer}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Data wystawienia</div>
+                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.data}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Dostawca</div>
+                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.dostawca}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Kwota brutto</div>
+                                        <div style={{ fontWeight: 600, color: '#48bb78', fontSize: '1.2rem' }}>{formatCurrency(previewInvoice.kwota)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                <h4 style={{ marginBottom: '16px', color: '#4299e1' }}>Dane KSeF</h4>
+                                <div>
+                                    <div style={{ color: '#a0aec0', fontSize: '12px' }}>Numer KSeF</div>
+                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', wordBreak: 'break-all' }}>{previewInvoice.ksef_numer}</div>
+                                </div>
+                                <div style={{ marginTop: '12px' }}>
+                                    <div style={{ color: '#a0aec0', fontSize: '12px' }}>Status</div>
+                                    <div style={{ fontWeight: 600, color: previewInvoice.already_exists ? '#a0aec0' : '#48bb78' }}>
+                                        {previewInvoice.already_exists ? 'Już w bazie' : 'Nowa - można zaimportować'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <button 
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    const printContent = document.getElementById('ksef-invoice-print');
+                                    if (printContent) {
+                                        const printWindow = window.open('', '_blank');
+                                        if (printWindow) {
+                                            printWindow.document.write(`
+                                                <html>
+                                                <head>
+                                                    <title>Faktura ${previewInvoice.numer}</title>
+                                                    <style>
+                                                        body { font-family: Arial, sans-serif; padding: 20px; }
+                                                        h4 { color: #333; margin-bottom: 12px; }
+                                                        .section { margin-bottom: 20px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+                                                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+                                                        .label { color: #666; font-size: 12px; }
+                                                        .value { font-weight: 600; color: #333; }
+                                                        .amount { color: #28a745; font-size: 1.2rem; }
+                                                        .ksef-num { font-family: monospace; font-size: 11px; word-break: break-all; }
+                                                    </style>
+                                                </head>
+                                                <body>
+                                                    <h2>Faktura KSeF</h2>
+                                                    <div class="section">
+                                                        <h4>Dane faktury</h4>
+                                                        <div class="grid">
+                                                            <div><div class="label">Numer faktury</div><div class="value">${previewInvoice.numer}</div></div>
+                                                            <div><div class="label">Data wystawienia</div><div class="value">${previewInvoice.data}</div></div>
+                                                            <div><div class="label">Dostawca</div><div class="value">${previewInvoice.dostawca}</div></div>
+                                                            <div><div class="label">Kwota brutto</div><div class="value amount">${previewInvoice.kwota.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'})}</div></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="section">
+                                                        <h4>Dane KSeF</h4>
+                                                        <div class="label">Numer KSeF</div>
+                                                        <div class="ksef-num">${previewInvoice.ksef_numer}</div>
+                                                    </div>
+                                                </body>
+                                                </html>
+                                            `);
+                                            printWindow.document.close();
+                                            printWindow.print();
+                                        }
+                                    }
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px', marginRight: '6px' }}>
+                                    <polyline points="6 9 6 2 18 2 18 9" />
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                    <rect x="6" y="14" width="12" height="8" />
+                                </svg>
+                                Drukuj
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setPreviewInvoice(null)}>
+                                Zamknij
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
+
         </div>
     );
 };

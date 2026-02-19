@@ -289,12 +289,17 @@ body {
 /* Tryb kompaktowy */
 .table.compact th,
 .table.compact td {
-  padding: 8px 12px;
-  font-size: 0.9rem;
+  padding: 5px 10px;
+  font-size: 0.85rem;
 }
 
 .table.compact th {
-  font-size: 0.75rem;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+}
+
+.table.compact tbody tr {
+  line-height: 1.2;
 }
 
 .table th {
