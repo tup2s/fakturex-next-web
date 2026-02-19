@@ -83,6 +83,8 @@ class KSeFService:
         """Autoryzacja z użyciem biblioteki ksef2."""
         try:
             env = get_environment(self.environment)
+            logger.info(f"KSeF auth: env={self.environment}, env_obj={env}, nip={self.nip}, token_len={len(self.token)}")
+            
             self._client = Client(env)
             
             # Token authentication
@@ -92,21 +94,31 @@ class KSeFService:
             )
             
             self.access_token = self._auth.access_token
+            logger.info(f"KSeF auth SUCCESS: got access_token")
             return True, "Autoryzacja udana (ksef2 SDK, API 2.0)"
             
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Błąd autoryzacji ksef2: {error_msg}")
+            logger.error(f"Exception type: {type(e).__name__}")
             
             # Spróbuj wyciągnąć bardziej szczegółowy komunikat
+            if hasattr(e, 'response'):
+                try:
+                    resp = e.response
+                    logger.error(f"Response status: {resp.status_code if hasattr(resp, 'status_code') else 'N/A'}")
+                    logger.error(f"Response body: {resp.text if hasattr(resp, 'text') else resp}")
+                except:
+                    pass
+            
             if "401" in error_msg:
                 return False, "Błąd autoryzacji (401): Token jest nieprawidłowy lub wygasł. Wygeneruj nowy token w portalu KSeF."
             elif "403" in error_msg:
                 return False, "Brak dostępu (403): Token nie ma uprawnień do tego NIP."
             elif "404" in error_msg:
-                return False, "Nie znaleziono (404): Sprawdź poprawność NIP."
+                return False, f"Nie znaleziono (404): Sprawdź poprawność NIP i środowisko. Używasz: {self.environment}, URL: {self.base_url}. Błąd: {error_msg[:300]}"
             else:
-                return False, f"Błąd autoryzacji KSeF: {error_msg[:200]}"
+                return False, f"Błąd autoryzacji KSeF ({type(e).__name__}): {error_msg[:300]}"
     
     def _authorize_fallback(self) -> Tuple[bool, str]:
         """Fallback autoryzacji gdy ksef2 niedostępne."""

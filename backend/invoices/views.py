@@ -121,6 +121,55 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return Response(InvoiceSerializer(invoice).data)
     
     @action(detail=False, methods=['post'])
+    def ksef_diagnostics(self, request):
+        """
+        Diagnostyka połączenia z KSeF - sprawdź konfigurację i autoryzację.
+        """
+        from customers.models import Settings
+        from customers.encryption import decrypt_token
+        from .ksef_service import KSeFService, KSEF2_AVAILABLE, get_environment
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            settings = Settings.objects.first()
+            
+            diag = {
+                'ksef2_available': KSEF2_AVAILABLE,
+                'settings_exists': settings is not None,
+                'has_token': bool(settings and settings.ksef_token),
+                'has_nip': bool(settings and settings.firma_nip),
+                'environment': settings.ksef_environment if settings else None,
+                'nip': settings.firma_nip if settings else None,
+                'token_length': len(settings.ksef_token) if settings and settings.ksef_token else 0,
+            }
+            
+            if settings and settings.ksef_token and settings.firma_nip:
+                token = decrypt_token(settings.ksef_token)
+                diag['decrypted_token_length'] = len(token)
+                diag['token_starts_with'] = token[:20] + '...' if len(token) > 20 else token
+                
+                # Spróbuj autoryzacji
+                service = KSeFService(token, settings.firma_nip, settings.ksef_environment)
+                diag['base_url'] = service.base_url
+                
+                success, auth_msg = service.authorize()
+                diag['auth_success'] = success
+                diag['auth_message'] = auth_msg
+                
+                service.terminate_session()
+            
+            return Response(diag)
+            
+        except Exception as e:
+            import traceback
+            return Response({
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }, status=500)
+
+    @action(detail=False, methods=['post'])
     def fetch_from_ksef(self, request):
         """
         Pobierz faktury z KSeF - zwraca podgląd do wyboru, nie zapisuje.
