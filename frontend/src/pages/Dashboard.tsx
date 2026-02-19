@@ -1,16 +1,87 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchInvoiceStats, fetchRecentUnpaid } from '../services/api';
 import { InvoiceStats, Invoice } from '../types';
+import { useToast } from '../components/common/Toast';
 
 const Dashboard: React.FC = () => {
+    const navigate = useNavigate();
+    const { showToast } = useToast();
     const [stats, setStats] = useState<InvoiceStats | null>(null);
     const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
     useEffect(() => {
         loadData();
     }, []);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore when focus is in input/textarea
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
+                return;
+            }
+
+            switch (e.key.toLowerCase()) {
+                case 'n':
+                    // N - new invoice
+                    e.preventDefault();
+                    navigate('/invoices');
+                    break;
+                case 'k':
+                    // K - KSeF
+                    e.preventDefault();
+                    navigate('/ksef');
+                    break;
+                case 'f':
+                    // F - invoices (faktury)
+                    e.preventDefault();
+                    navigate('/invoices');
+                    break;
+                case 's':
+                    // S - settings
+                    e.preventDefault();
+                    navigate('/settings');
+                    break;
+                case 'arrowdown':
+                case 'j':
+                    // Down/J - next invoice
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.min(prev + 1, recentInvoices.length - 1));
+                    break;
+                case 'arrowup':
+                    // Up - previous invoice
+                    e.preventDefault();
+                    setSelectedIndex(prev => Math.max(prev - 1, 0));
+                    break;
+                case 'c':
+                    // C - copy invoice number
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < recentInvoices.length) {
+                        const numer = recentInvoices[selectedIndex].numer;
+                        navigator.clipboard.writeText(numer).then(() => {
+                            showToast(`Skopiowano: ${numer}`, 'success');
+                        });
+                    }
+                    break;
+                case 'w':
+                    // W - copy amount
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && selectedIndex < recentInvoices.length) {
+                        const kwota = recentInvoices[selectedIndex].kwota.toFixed(2);
+                        navigator.clipboard.writeText(kwota).then(() => {
+                            showToast(`Skopiowano: ${kwota} zł`, 'success');
+                        });
+                    }
+                    break;
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [selectedIndex, recentInvoices, navigate, showToast]);
 
     const loadData = async () => {
         try {
@@ -144,8 +215,12 @@ const Dashboard: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentInvoices.map((invoice) => (
-                                        <tr key={invoice.id}>
+                                    {recentInvoices.map((invoice, index) => (
+                                        <tr 
+                                            key={invoice.id}
+                                            className={selectedIndex === index ? 'selected' : ''}
+                                            onClick={() => setSelectedIndex(index)}
+                                        >
                                             <td><strong>{invoice.numer}</strong></td>
                                             <td>{invoice.dostawca}</td>
                                             <td>{invoice.data}</td>

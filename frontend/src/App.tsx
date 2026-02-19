@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import Navbar from './components/common/Navbar';
 import Sidebar from './components/common/Sidebar';
 import MobileNav from './components/common/MobileNav';
+import { ToastProvider } from './components/common/Toast';
 import Dashboard from './pages/Dashboard';
 import Invoices from './pages/Invoices';
 import Contractors from './pages/Contractors';
@@ -69,6 +70,7 @@ const App: React.FC = () => {
 
   return (
     <AuthContext.Provider value={auth}>
+      <ToastProvider>
       <Router>
         <Routes>
           <Route path="/login" element={
@@ -102,6 +104,7 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      </ToastProvider>
     </AuthContext.Provider>
   );
 };

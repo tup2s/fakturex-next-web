@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Invoice, InvoiceFormData, Contractor } from '../types';
+import { useToast } from '../components/common/Toast';
 import { 
     fetchInvoices, 
     fetchContractors, 
@@ -27,6 +28,7 @@ const emptyForm: InvoiceFormData = {
 
 const Invoices: React.FC = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(true);
@@ -190,8 +192,7 @@ const Invoices: React.FC = () => {
                     if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
                         const numer = filteredInvoices[selectedIndex].numer;
                         navigator.clipboard.writeText(numer).then(() => {
-                            // Mini feedback - można dodać toast
-                            console.log('Skopiowano numer:', numer);
+                            showToast(`Skopiowano: ${numer}`, 'success');
                         });
                     }
                     break;
@@ -201,7 +202,7 @@ const Invoices: React.FC = () => {
                     if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
                         const kwota = filteredInvoices[selectedIndex].kwota.toFixed(2);
                         navigator.clipboard.writeText(kwota).then(() => {
-                            console.log('Skopiowano kwotę:', kwota);
+                            showToast(`Skopiowano: ${kwota} zł`, 'success');
                         });
                     }
                     break;
@@ -210,7 +211,7 @@ const Invoices: React.FC = () => {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [showModal, previewInvoice, selectedIndex, filteredInvoices, navigate]);
+    }, [showModal, previewInvoice, selectedIndex, filteredInvoices, navigate, showToast]);
 
     const loadInitialData = async () => {
         try {
@@ -319,12 +320,15 @@ const Invoices: React.FC = () => {
         try {
             if (invoice.status === 'zaplacona') {
                 await markInvoiceUnpaid(invoice.id);
+                showToast(`${invoice.numer} - Niezapłacona`, 'info');
             } else {
                 await markInvoicePaid(invoice.id);
+                showToast(`${invoice.numer} - Zapłacona`, 'success');
             }
             loadInvoices();
         } catch (error) {
             console.error('Błąd zmiany statusu:', error);
+            showToast('Błąd zmiany statusu', 'error');
         }
     };
 
