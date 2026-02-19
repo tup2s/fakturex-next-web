@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Count, Q, Case, When, BooleanField
 from datetime import date, timedelta
+import json
 from .models import Invoice
 from .serializers import InvoiceSerializer
 
@@ -150,6 +151,46 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice.status = 'niezaplacona'
         invoice.save()
         return Response(InvoiceSerializer(invoice).data)
+    
+    @action(detail=True, methods=['get'])
+    def ksef_data(self, request, pk=None):
+        """
+        Pobierz pełne dane KSeF dla faktury (pozycje, nabywca, sprzedawca itp.)
+        """
+        invoice = self.get_object()
+        
+        if not invoice.ksef_numer:
+            return Response(
+                {'error': 'Ta faktura nie pochodzi z KSeF.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Spróbuj sparsować zapisane dane KSeF
+        ksef_data = {}
+        if invoice.ksef_xml:
+            try:
+                ksef_data = json.loads(invoice.ksef_xml)
+            except json.JSONDecodeError:
+                # Stary format XML - brak danych szczegółowych
+                pass
+        
+        return Response({
+            'invoice_id': invoice.id,
+            'ksef_numer': invoice.ksef_numer,
+            'numer': invoice.numer,
+            'data': str(invoice.data),
+            'kwota': float(invoice.kwota),
+            'dostawca': invoice.dostawca,
+            'termin_platnosci': str(invoice.termin_platnosci),
+            'data_sprzedazy': ksef_data.get('data_sprzedazy'),
+            'dostawca_nip': ksef_data.get('dostawca_nip'),
+            'dostawca_adres': ksef_data.get('dostawca_adres'),
+            'nabywca': ksef_data.get('nabywca'),
+            'nabywca_nip': ksef_data.get('nabywca_nip'),
+            'forma_platnosci': ksef_data.get('forma_platnosci'),
+            'waluta': ksef_data.get('waluta', 'PLN'),
+            'pozycje': ksef_data.get('pozycje', []),
+        })
     
     @action(detail=False, methods=['post'])
     def ksef_diagnostics(self, request):
@@ -406,7 +447,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             else:
                 invoice_status = 'niezaplacona'
             
-            # Utwórz fakturę
+            # Utwórz fakturę z pełnymi danymi KSeF
+            ksef_data = {
+                'data_sprzedazy': inv_data.get('data_sprzedazy'),
+                'dostawca_nip': inv_data.get('dostawca_nip'),
+                'dostawca_adres': inv_data.get('dostawca_adres'),
+                'nabywca': inv_data.get('nabywca'),
+                'nabywca_nip': inv_data.get('nabywca_nip'),
+                'forma_platnosci': inv_data.get('forma_platnosci'),
+                'waluta': inv_data.get('waluta'),
+                'pozycje': inv_data.get('pozycje', []),
+            }
+            
             Invoice.objects.create(
                 numer=inv_data['numer'],
                 data=inv_data['data'],
@@ -415,6 +467,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 termin_platnosci=termin,
                 status=invoice_status,
                 ksef_numer=inv_data['ksef_numer'],
+                ksef_xml=json.dumps(ksef_data, ensure_ascii=False),  # Zapisz dane KSeF jako JSON
             )
             imported_count += 1
         

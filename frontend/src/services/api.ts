@@ -154,6 +154,11 @@ export const markInvoiceUnpaid = async (id: number): Promise<Invoice> => {
   return response.data;
 };
 
+export const fetchInvoiceKSeFData = async (id: number): Promise<KSeFInvoice> => {
+  const response = await apiClient.get(`/invoices/${id}/ksef_data/`);
+  return response.data;
+};
+
 export interface KSeFInvoicePozycja {
   nazwa?: string;
   ilosc?: string;

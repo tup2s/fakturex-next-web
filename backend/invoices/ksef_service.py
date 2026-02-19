@@ -535,8 +535,10 @@ class KSeFService:
                 './/{*}Podmiot2//{*}NIP',
             ])
             
-            # Pozycje faktury - FaWiersz
+            # Pozycje faktury - FaWiersz (normalne faktury) lub Zamowienie (faktury zaliczkowe)
             pozycje = []
+            
+            # Najpierw szukaj FaWiersz (normalne faktury)
             wiersz_paths = ['.//fa:FaWiersz', './/FaWiersz', './/{*}FaWiersz']
             for path in wiersz_paths:
                 try:
@@ -596,6 +598,72 @@ class KSeFService:
                 except Exception as e:
                     logger.debug(f"Error parsing positions: {e}")
                     continue
+            
+            # Jeśli brak FaWiersz, szukaj Zamowienie (faktury zaliczkowe)
+            if not pozycje:
+                zamowienie_paths = [
+                    './/fa:Zamowienie', './/Zamowienie', './/{*}Zamowienie',
+                    './/fa:ZamowienieWiersz', './/ZamowienieWiersz', './/{*}ZamowienieWiersz',
+                    './/fa:Zaliczka', './/Zaliczka', './/{*}Zaliczka',
+                    './/fa:ZaliczkaCzesciowa', './/ZaliczkaCzesciowa', './/{*}ZaliczkaCzesciowa',
+                ]
+                for path in zamowienie_paths:
+                    try:
+                        if ns:
+                            wiersze = root.findall(path, namespaces=ns)
+                        else:
+                            wiersze = root.findall(path)
+                        
+                        if wiersze:
+                            for wiersz in wiersze:
+                                poz = {}
+                                # Opis zamówienia/zaliczki
+                                for name_path in ['fa:OpisZamowienia', 'OpisZamowienia', '{*}OpisZamowienia',
+                                                  'fa:P_7Z', 'P_7Z', '{*}P_7Z',
+                                                  'fa:NazwaTowaru', 'NazwaTowaru', '{*}NazwaTowaru']:
+                                    el = wiersz.find(name_path, namespaces=ns) if ns else wiersz.find(name_path.replace('fa:', ''))
+                                    if el is not None and el.text:
+                                        poz['nazwa'] = el.text.strip()
+                                        break
+                                
+                                # Kwota zaliczki
+                                for kwota_path in ['fa:KwotaZaliczki', 'KwotaZaliczki', '{*}KwotaZaliczki',
+                                                   'fa:WartoscBrutto', 'WartoscBrutto', '{*}WartoscBrutto',
+                                                   'fa:P_11Z', 'P_11Z', '{*}P_11Z']:
+                                    el = wiersz.find(kwota_path, namespaces=ns) if ns else wiersz.find(kwota_path.replace('fa:', ''))
+                                    if el is not None and el.text:
+                                        poz['wartosc_netto'] = el.text.strip()
+                                        break
+                                
+                                # Stawka VAT zaliczki
+                                for vat_path in ['fa:StawkaVAT', 'StawkaVAT', '{*}StawkaVAT',
+                                                 'fa:P_12Z', 'P_12Z', '{*}P_12Z']:
+                                    el = wiersz.find(vat_path, namespaces=ns) if ns else wiersz.find(vat_path.replace('fa:', ''))
+                                    if el is not None and el.text:
+                                        poz['stawka_vat'] = el.text.strip()
+                                        break
+                                
+                                if poz.get('nazwa') or poz.get('wartosc_netto'):
+                                    if not poz.get('nazwa'):
+                                        poz['nazwa'] = 'Zaliczka'
+                                    poz['ilosc'] = '1'
+                                    poz['jednostka'] = 'szt.'
+                                    pozycje.append(poz)
+                            if pozycje:
+                                break
+                    except Exception as e:
+                        logger.debug(f"Error parsing zaliczka positions: {e}")
+                        continue
+            
+            # Jeśli nadal brak pozycji, stwórz jedną z kwoty całkowitej
+            if not pozycje and kwota_brutto:
+                pozycje.append({
+                    'nazwa': 'Pozycja faktury (szczegóły niedostępne)',
+                    'ilosc': '1',
+                    'jednostka': 'szt.',
+                    'wartosc_netto': str(kwota_brutto),
+                    'stawka_vat': '23'
+                })
             
             # Waluta
             waluta = find_text(['.//fa:KodWaluty', './/KodWaluty', './/{*}KodWaluty'], 'PLN')
