@@ -509,13 +509,13 @@ const Invoices: React.FC = () => {
                 <div className="table-container">
                     <table className={`table${compactMode ? ' compact' : ''}`}>
                         <colgroup>
-                            <col style={{ width: '15%' }} />
-                            <col style={{ width: '10%' }} />
-                            <col style={{ width: '25%' }} />
-                            <col style={{ width: '15%' }} />
-                            <col style={{ width: '12%' }} />
-                            <col style={{ width: '11%' }} />
-                            <col style={{ width: '12%' }} />
+                            <col style={{ width: '140px' }} />
+                            <col style={{ width: '90px' }} />
+                            <col />
+                            <col style={{ width: '140px' }} />
+                            <col style={{ width: '100px' }} />
+                            <col style={{ width: '110px' }} />
+                            <col style={{ width: '90px' }} />
                         </colgroup>
                         <thead>
                             <tr>
