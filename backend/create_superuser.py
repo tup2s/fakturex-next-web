@@ -37,23 +37,32 @@ password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'magia2')
 print(f"=== Creating user: {username} ===")
 
 try:
+    # Usuń istniejącego użytkownika i stwórz nowego z nowym hasłem
     user, created = User.objects.get_or_create(username=username, defaults={
         'email': email,
         'is_staff': True,
         'is_superuser': True,
     })
 
+    # Zawsze resetuj hasło
+    user.set_password(password)
+    user.is_staff = True
+    user.is_superuser = True
+    user.is_active = True
+    user.save()
+    
     if created:
-        user.set_password(password)
-        user.save()
-        print(f'SUCCESS: Superuser {username} created with password')
+        print(f'SUCCESS: Superuser {username} created')
     else:
-        # Zawsze resetuj hasło do domyślnego
-        user.set_password(password)
-        user.is_staff = True
-        user.is_superuser = True
-        user.save()
-        print(f'SUCCESS: Superuser {username} already exists - password reset to default')
+        print(f'SUCCESS: Superuser {username} updated - password reset')
+    
+    # Weryfikacja hasła
+    from django.contrib.auth import authenticate
+    test_user = authenticate(username=username, password=password)
+    if test_user:
+        print(f'VERIFIED: Password for {username} works!')
+    else:
+        print(f'WARNING: Password verification failed for {username}')
     
     # Weryfikacja
     final_count = User.objects.count()
