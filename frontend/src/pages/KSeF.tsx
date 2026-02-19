@@ -165,7 +165,7 @@ const KSeF: React.FC = () => {
         }
     };
 
-    const isConfigured = settings?.ksef_token && settings?.firma_nip;
+    const isConfigured = settings?.has_ksef_token && settings?.firma_nip;
 
     if (loading) {
         return (
