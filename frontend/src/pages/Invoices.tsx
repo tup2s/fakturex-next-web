@@ -196,17 +196,27 @@ const Invoices: React.FC = () => {
                         navigator.clipboard.writeText(numer).then(() => {
                             showToast(`Skopiowano: ${numer}`, 'success');
                         });
+                    } else {
+                        showToast('Najpierw wybierz fakturę (↑↓)', 'warning');
                     }
                     break;
                 case 'w':
                     // W - kopiuj kwotę
                     e.preventDefault();
                     if (selectedIndex >= 0 && selectedIndex < filteredInvoices.length) {
-                        const kwota = filteredInvoices[selectedIndex].kwota.toFixed(2);
+                        const kwota = parseFloat(String(filteredInvoices[selectedIndex].kwota)).toFixed(2);
                         navigator.clipboard.writeText(kwota).then(() => {
                             showToast(`Skopiowano: ${kwota} zł`, 'success');
                         });
+                    } else {
+                        showToast('Najpierw wybierz fakturę (↑↓)', 'warning');
                     }
+                    break;
+                case 'h':
+                case '?':
+                    // H lub ? - pokaż skróty
+                    e.preventDefault();
+                    showToast('Skróty: N-nowa, K-ksef, ↑↓-nawigacja, Enter-podgląd, E-edytuj, P-płatność, C-kopiuj nr, W-kopiuj kwotę', 'info');
                     break;
             }
         };
