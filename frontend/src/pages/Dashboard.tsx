@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchInvoiceStats, fetchInvoices } from '../services/api';
+import { fetchInvoiceStats, fetchRecentUnpaid } from '../services/api';
 import { InvoiceStats, Invoice } from '../types';
 
 const Dashboard: React.FC = () => {
@@ -14,12 +14,13 @@ const Dashboard: React.FC = () => {
 
     const loadData = async () => {
         try {
-            const [statsData, invoicesData] = await Promise.all([
-                fetchInvoiceStats(),
-                fetchInvoices()
+            // Ładuj tylko statystyki bieżącego miesiąca i 5 niezapłaconych faktur
+            const [statsData, unpaidInvoices] = await Promise.all([
+                fetchInvoiceStats(true), // current_month=true
+                fetchRecentUnpaid(5)     // limit=5
             ]);
             setStats(statsData);
-            setRecentInvoices(invoicesData.slice(0, 5));
+            setRecentInvoices(unpaidInvoices);
         } catch (error) {
             console.error('Błąd ładowania danych:', error);
         } finally {
@@ -49,7 +50,7 @@ const Dashboard: React.FC = () => {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Panel główny</h1>
-                    <p className="page-subtitle">Podsumowanie faktur kosztowych</p>
+                    <p className="page-subtitle">Podsumowanie faktur kosztowych - bieżący miesiąc</p>
                 </div>
                 <Link to="/invoices" className="btn btn-primary">
                     + Dodaj fakturę
@@ -88,13 +89,13 @@ const Dashboard: React.FC = () => {
             <div className="stats-grid">
                 <div className="stat-card">
                     <div className="stat-value">{stats?.total_count || 0}</div>
-                    <div className="stat-label">Wszystkich faktur</div>
+                    <div className="stat-label">Faktur w tym miesiącu</div>
                     <div className="stat-amount">{formatCurrency(stats?.suma_wszystkich || 0)}</div>
                 </div>
 
                 <div className="stat-card warning">
                     <div className="stat-value">{stats?.niezaplacone_count || 0}</div>
-                    <div className="stat-label">Niezapłaconych</div>
+                    <div className="stat-label">Do zapłaty</div>
                     <div className="stat-amount">{formatCurrency(stats?.suma_niezaplaconych || 0)}</div>
                 </div>
 
@@ -111,11 +112,11 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Ostatnie faktury */}
+            {/* Niezapłacone faktury */}
             <div className="card">
                 <div className="card-header">
-                    <h2 className="card-title">Ostatnie faktury</h2>
-                    <Link to="/invoices" className="btn btn-sm btn-secondary">
+                    <h2 className="card-title">Niezapłacone faktury</h2>
+                    <Link to="/invoices?status=niezaplacona" className="btn btn-sm btn-secondary">
                         Zobacz wszystkie
                     </Link>
                 </div>

@@ -252,7 +252,9 @@ class KSeFService:
                 logger.info(f"KSeF fetch: export scheduled, ref={export.reference_number}, getting status")
                 
                 # Poczekaj na wynik
-                export_result = session.get_export_status(export.reference_number)
+                export_result = session.get_export_status(
+                    reference_number=export.reference_number
+                )
                 
                 logger.info(f"KSeF fetch: export status received, has_package={export_result.package is not None}")
                 

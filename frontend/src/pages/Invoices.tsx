@@ -35,6 +35,9 @@ const Invoices: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+    const [compactMode, setCompactMode] = useState<boolean>(() => {
+        return localStorage.getItem('invoicesCompactMode') === 'true';
+    });
     
     // Date filters
     const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -405,6 +408,17 @@ const Invoices: React.FC = () => {
                         >
                             Zapłacone
                         </button>
+                        <button 
+                            className={`btn btn-sm ${compactMode ? 'btn-dark' : 'btn-outline-secondary'}`}
+                            onClick={() => {
+                                const newValue = !compactMode;
+                                setCompactMode(newValue);
+                                localStorage.setItem('invoicesCompactMode', String(newValue));
+                            }}
+                            title="Tryb kompaktowy"
+                        >
+                            ☰
+                        </button>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select 
@@ -436,7 +450,7 @@ const Invoices: React.FC = () => {
             {/* Tabela */}
             <div className="card">
                 <div className="table-container">
-                    <table className="table">
+                    <table className={`table${compactMode ? ' compact' : ''}`}>
                         <thead>
                             <tr>
                                 <th>Numer</th>

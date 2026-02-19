@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Case, When, BooleanField
 from datetime import date, timedelta
 from .models import Invoice
 from .serializers import InvoiceSerializer
@@ -66,11 +66,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def stats(self, request):
         """
         Statystyki faktur dla dashboardu.
+        Opcjonalny parametr current_month=true dla statystyk tylko z bieżącego miesiąca.
         """
         today = date.today()
+        current_month_only = request.query_params.get('current_month') == 'true'
         
-        # Wszystkie faktury
+        # Wszystkie faktury (lub tylko z bieżącego miesiąca)
         all_invoices = Invoice.objects.all()
+        if current_month_only:
+            all_invoices = all_invoices.filter(
+                data__year=today.year,
+                data__month=today.month
+            )
         
         # Statystyki
         total_count = all_invoices.count()
@@ -98,7 +105,31 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             'suma_zaplaconych': float(suma_zaplaconych),
             'suma_niezaplaconych': float(suma_niezaplaconych),
             'suma_przeterminowanych': float(suma_przeterminowanych),
+            'current_month': current_month_only,
+            'month_name': today.strftime('%B %Y') if current_month_only else None,
         })
+    
+    @action(detail=False, methods=['get'])
+    def recent_unpaid(self, request):
+        """
+        Ostatnie niezapłacone faktury dla dashboardu.
+        Domyślnie zwraca 5 faktur, można zmienić parametrem limit.
+        Sortowane: przeterminowane najpierw, potem po terminie płatności.
+        """
+        limit = int(request.query_params.get('limit', 5))
+        today = date.today()
+        
+        # Niezapłacone faktury
+        invoices = Invoice.objects.filter(status='niezaplacona').annotate(
+            is_overdue_db=Case(
+                When(termin_platnosci__lt=today, then=True),
+                default=False,
+                output_field=BooleanField()
+            )
+        ).order_by('-is_overdue_db', 'termin_platnosci')[:limit]
+        
+        serializer = InvoiceSerializer(invoices, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def mark_paid(self, request, pk=None):

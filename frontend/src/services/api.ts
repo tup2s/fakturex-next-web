@@ -114,8 +114,14 @@ export const fetchAvailableYears = async (): Promise<number[]> => {
   return response.data.years;
 };
 
-export const fetchInvoiceStats = async (): Promise<InvoiceStats> => {
-  const response = await apiClient.get('/invoices/stats/');
+export const fetchInvoiceStats = async (currentMonth: boolean = false): Promise<InvoiceStats> => {
+  const params = currentMonth ? { current_month: 'true' } : {};
+  const response = await apiClient.get('/invoices/stats/', { params });
+  return response.data;
+};
+
+export const fetchRecentUnpaid = async (limit: number = 5): Promise<Invoice[]> => {
+  const response = await apiClient.get('/invoices/recent_unpaid/', { params: { limit } });
   return response.data;
 };
 
