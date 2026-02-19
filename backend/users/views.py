@@ -7,6 +7,52 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 
 
+class DebugLoginView(APIView):
+    """Debug endpoint - sprawdza użytkowników i hasła"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        users = User.objects.all()
+        return Response({
+            'users_count': users.count(),
+            'users': [
+                {
+                    'id': u.id,
+                    'username': u.username,
+                    'is_active': u.is_active,
+                    'is_staff': u.is_staff,
+                    'is_superuser': u.is_superuser,
+                    'has_usable_password': u.has_usable_password(),
+                }
+                for u in users
+            ]
+        })
+    
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        try:
+            user = User.objects.get(username=username)
+            check_password = user.check_password(password)
+            auth_result = authenticate(username=username, password=password)
+            
+            return Response({
+                'user_found': True,
+                'username': user.username,
+                'is_active': user.is_active,
+                'has_usable_password': user.has_usable_password(),
+                'check_password_result': check_password,
+                'authenticate_result': auth_result is not None,
+                'password_hash_prefix': user.password[:30] if user.password else None,
+            })
+        except User.DoesNotExist:
+            return Response({
+                'user_found': False,
+                'username': username,
+            })
+
+
 class LoginView(APIView):
     """Logowanie użytkownika - zwraca tokeny JWT"""
     permission_classes = [AllowAny]
