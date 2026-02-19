@@ -12,6 +12,7 @@ import {
     markInvoiceUnpaid,
     fetchAvailableYears,
     fetchInvoiceKSeFData,
+    refreshInvoiceKSeFData,
     KSeFInvoice
 } from '../services/api';
 
@@ -40,6 +41,7 @@ const Invoices: React.FC = () => {
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [ksefPreviewData, setKsefPreviewData] = useState<KSeFInvoice | null>(null);
     const [loadingKsefData, setLoadingKsefData] = useState(false);
+    const [refreshingKsefData, setRefreshingKsefData] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
     // Zawsze tryb kompaktowy
     const compactMode = true;
@@ -356,6 +358,26 @@ const Invoices: React.FC = () => {
     const closePreview = () => {
         setPreviewInvoice(null);
         setKsefPreviewData(null);
+    };
+
+    const handleRefreshKsefData = async () => {
+        if (!previewInvoice || !previewInvoice.ksef_numer) return;
+        
+        setRefreshingKsefData(true);
+        try {
+            const result = await refreshInvoiceKSeFData(previewInvoice.id);
+            if (result.success) {
+                showToast('Dane KSeF zostały zaktualizowane', 'success');
+                // Pobierz zaktualizowane dane
+                const ksefData = await fetchInvoiceKSeFData(previewInvoice.id);
+                setKsefPreviewData(ksefData);
+            }
+        } catch (error: any) {
+            const msg = error.response?.data?.error || 'Błąd odświeżania danych KSeF';
+            showToast(msg, 'error');
+        } finally {
+            setRefreshingKsefData(false);
+        }
     };
 
     const handleContractorSelect = (contractorId: string) => {
@@ -801,7 +823,24 @@ const Invoices: React.FC = () => {
                                             }) : (
                                                 <tr>
                                                     <td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                                                        Brak szczegółowych pozycji - kwota całkowita: {formatCurrency(previewInvoice.kwota)}
+                                                        <div style={{ marginBottom: '12px' }}>
+                                                            Brak szczegółowych pozycji - kwota całkowita: {formatCurrency(previewInvoice.kwota)}
+                                                        </div>
+                                                        <button 
+                                                            onClick={handleRefreshKsefData}
+                                                            disabled={refreshingKsefData}
+                                                            style={{
+                                                                padding: '8px 16px',
+                                                                background: '#4299e1',
+                                                                color: '#fff',
+                                                                border: 'none',
+                                                                borderRadius: '4px',
+                                                                cursor: refreshingKsefData ? 'wait' : 'pointer',
+                                                                fontSize: '12px'
+                                                            }}
+                                                        >
+                                                            {refreshingKsefData ? 'Pobieranie...' : '🔄 Pobierz dane z KSeF'}
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             )}

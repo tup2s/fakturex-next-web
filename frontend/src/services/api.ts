@@ -159,6 +159,11 @@ export const fetchInvoiceKSeFData = async (id: number): Promise<KSeFInvoice> => 
   return response.data;
 };
 
+export const refreshInvoiceKSeFData = async (id: number): Promise<{ success: boolean; message: string; pozycje_count: number; nabywca: string }> => {
+  const response = await apiClient.post(`/invoices/${id}/refresh_ksef_data/`);
+  return response.data;
+};
+
 export interface KSeFInvoicePozycja {
   nazwa?: string;
   ilosc?: string;

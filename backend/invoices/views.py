@@ -192,6 +192,99 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             'pozycje': ksef_data.get('pozycje', []),
         })
     
+    @action(detail=True, methods=['post'])
+    def refresh_ksef_data(self, request, pk=None):
+        """
+        Odśwież dane KSeF dla faktury - pobierz ponownie z KSeF bez zmiany statusu płatności.
+        """
+        from customers.models import Settings
+        from customers.encryption import decrypt_token
+        from .ksef_service import KSeFService, KSEF2_AVAILABLE
+        
+        invoice = self.get_object()
+        
+        if not invoice.ksef_numer:
+            return Response(
+                {'error': 'Ta faktura nie pochodzi z KSeF.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Sprawdź konfigurację KSeF
+        settings = Settings.objects.first()
+        if not settings or not settings.ksef_token or not settings.firma_nip:
+            return Response(
+                {'error': 'Brak konfiguracji KSeF. Uzupełnij token i NIP w ustawieniach.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not KSEF2_AVAILABLE:
+            return Response(
+                {'error': 'Biblioteka ksef2 nie jest dostępna.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        try:
+            # Przygotuj zakres dat - dzień przed i po dacie faktury
+            date_from = (invoice.data - timedelta(days=1)).strftime('%Y-%m-%d')
+            date_to = (invoice.data + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+            token = decrypt_token(settings.ksef_token)
+            service = KSeFService(token, settings.firma_nip, settings.ksef_environment)
+            
+            success, auth_msg = service.authorize()
+            if not success:
+                return Response(
+                    {'error': f'Błąd autoryzacji KSeF: {auth_msg}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            try:
+                invoices_data, msg = service.fetch_invoices(date_from, date_to, 'SUBJECT2')
+                
+                # Znajdź fakturę po ksef_numer
+                found = None
+                for inv in invoices_data:
+                    if inv.get('ksef_numer') == invoice.ksef_numer:
+                        found = inv
+                        break
+                
+                if not found:
+                    return Response(
+                        {'error': f'Nie znaleziono faktury {invoice.ksef_numer} w KSeF. Spróbuj rozszerzyć zakres dat.'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Zaktualizuj tylko dane KSeF (bez zmiany statusu)
+                ksef_data = {
+                    'data_sprzedazy': found.get('data_sprzedazy'),
+                    'dostawca_nip': found.get('dostawca_nip'),
+                    'dostawca_adres': found.get('dostawca_adres'),
+                    'nabywca': found.get('nabywca'),
+                    'nabywca_nip': found.get('nabywca_nip'),
+                    'forma_platnosci': found.get('forma_platnosci'),
+                    'waluta': found.get('waluta'),
+                    'pozycje': found.get('pozycje', []),
+                }
+                
+                invoice.ksef_xml = json.dumps(ksef_data, ensure_ascii=False)
+                invoice.save(update_fields=['ksef_xml'])
+                
+                return Response({
+                    'success': True,
+                    'message': 'Dane KSeF zostały zaktualizowane.',
+                    'pozycje_count': len(ksef_data.get('pozycje', [])),
+                    'nabywca': ksef_data.get('nabywca'),
+                })
+                
+            finally:
+                service.terminate_session()
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Błąd pobierania danych: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=False, methods=['post'])
     def ksef_diagnostics(self, request):
         """
