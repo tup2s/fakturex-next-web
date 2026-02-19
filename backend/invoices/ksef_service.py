@@ -268,9 +268,8 @@ class KSeFService:
                 
         except Exception as e:
             logger.error(f"Błąd pobierania z ksef2: {e}", exc_info=True)
-            # Fallback do prostego API
-            logger.info("KSeF fetch: falling back to simple API")
-            return self._fetch_fallback(date_from, date_to, subject_type)
+            # Zwróć komunikat błędu zamiast fallback do nieistniejącego API
+            return [], f"Błąd pobierania faktur: {str(e)[:200]}"
     
     def _fetch_fallback(
         self, 
