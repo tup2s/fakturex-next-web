@@ -249,25 +249,65 @@ class KSeFService:
                 # Zaplanuj eksport
                 export = session.schedule_invoices_export(filters=filters)
                 
-                logger.info(f"KSeF fetch: export scheduled, ref={export.reference_number}, getting status")
+                logger.info(f"KSeF fetch: export scheduled, ref={export.reference_number}, waiting for completion...")
                 
-                # Poczekaj na wynik
-                export_result = session.get_export_status(
-                    reference_number=export.reference_number
-                )
+                # Poczekaj na gotowość eksportu - polling z timeout
+                import time
+                max_wait_seconds = 120
+                poll_interval = 3
+                elapsed = 0
+                export_result = None
+                
+                while elapsed < max_wait_seconds:
+                    export_result = session.get_export_status(
+                        reference_number=export.reference_number
+                    )
+                    
+                    # Sprawdź czy eksport jest gotowy (ma pakiet)
+                    if export_result.package:
+                        logger.info(f"KSeF fetch: export ready after {elapsed}s, package available")
+                        break
+                    
+                    # Sprawdź status jeśli dostępny
+                    status = getattr(export_result, 'status', None) or getattr(export_result, 'processing_status', None)
+                    logger.info(f"KSeF fetch: waiting... elapsed={elapsed}s, status={status}, package={export_result.package}")
+                    
+                    # Jeśli status to błąd lub zakończony bez danych
+                    if status and str(status).upper() in ['ERROR', 'FAILED', 'FINISHED']:
+                        if not export_result.package:
+                            logger.warning(f"KSeF fetch: export finished but no package, status={status}")
+                            break
+                    
+                    time.sleep(poll_interval)
+                    elapsed += poll_interval
+                
+                if not export_result:
+                    return [], "Błąd: brak odpowiedzi eksportu"
                 
                 logger.info(f"KSeF fetch: export status received, has_package={export_result.package is not None}")
                 
                 invoices = []
                 if export_result.package:
-                    # Pobierz pakiet
+                    # Pobierz pakiet - użyj tempfile dla cross-platform
+                    import tempfile
+                    import os
+                    temp_dir = tempfile.mkdtemp(prefix='ksef_export_')
+                    logger.info(f"KSeF fetch: downloading package to {temp_dir}")
+                    
                     for path in session.fetch_package(
                         package=export_result.package, 
-                        target_directory="/tmp/ksef_export"
+                        target_directory=temp_dir
                     ):
                         logger.info(f"KSeF fetch: downloaded file {path}")
                         # Parsuj pobrany plik
                         invoices.extend(self._parse_export_file(path))
+                    
+                    # Spróbuj posprzątać
+                    try:
+                        import shutil
+                        shutil.rmtree(temp_dir)
+                    except Exception as cleanup_err:
+                        logger.warning(f"Could not clean up temp dir: {cleanup_err}")
                 
                 logger.info(f"KSeF fetch: SUCCESS, parsed {len(invoices)} invoices")
                 return invoices, f"Pobrano {len(invoices)} faktur (ksef2 SDK)"
