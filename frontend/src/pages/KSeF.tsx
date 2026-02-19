@@ -574,44 +574,115 @@ const KSeF: React.FC = () => {
             {/* Preview Modal */}
             {previewInvoice && (
                 <div className="modal-overlay" onClick={() => setPreviewInvoice(null)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
                         <div className="modal-header">
                             <h3>Podgląd faktury KSeF</h3>
                             <button className="modal-close" onClick={() => setPreviewInvoice(null)}>&times;</button>
                         </div>
                         <div className="modal-body" id="ksef-invoice-print">
-                            <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                <h4 style={{ marginBottom: '16px', color: '#4299e1' }}>Dane faktury</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            {/* Nagłówek */}
+                            <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                     <div>
                                         <div style={{ color: '#a0aec0', fontSize: '12px' }}>Numer faktury</div>
-                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.numer}</div>
+                                        <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1.3rem' }}>{previewInvoice.numer}</div>
                                     </div>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Data wystawienia</div>
-                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.data}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Dostawca</div>
-                                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{previewInvoice.dostawca}</div>
-                                    </div>
-                                    <div>
+                                    <div style={{ textAlign: 'right' }}>
                                         <div style={{ color: '#a0aec0', fontSize: '12px' }}>Kwota brutto</div>
-                                        <div style={{ fontWeight: 600, color: '#48bb78', fontSize: '1.2rem' }}>{formatCurrency(previewInvoice.kwota)}</div>
+                                        <div style={{ fontWeight: 700, color: '#48bb78', fontSize: '1.5rem' }}>
+                                            {formatCurrency(previewInvoice.kwota)} {(previewInvoice as any).waluta && (previewInvoice as any).waluta !== 'PLN' ? (previewInvoice as any).waluta : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Data wystawienia</div>
+                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{previewInvoice.data}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Data sprzedaży</div>
+                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{(previewInvoice as any).data_sprzedazy || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Termin płatności</div>
+                                        <div style={{ fontWeight: 500, color: (previewInvoice as any).termin_platnosci ? '#ed8936' : '#ffffff' }}>
+                                            {(previewInvoice as any).termin_platnosci || '-'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Forma płatności</div>
+                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{(previewInvoice as any).forma_platnosci || '-'}</div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                <h4 style={{ marginBottom: '16px', color: '#4299e1' }}>Dane KSeF</h4>
-                                <div>
-                                    <div style={{ color: '#a0aec0', fontSize: '12px' }}>Numer KSeF</div>
-                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: '#ffffff', wordBreak: 'break-all' }}>{previewInvoice.ksef_numer}</div>
+                            {/* Strony */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                                {/* Sprzedawca */}
+                                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Sprzedawca</h4>
+                                    <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{previewInvoice.dostawca}</div>
+                                    <div style={{ color: '#a0aec0', fontSize: '13px' }}>NIP: {(previewInvoice as any).dostawca_nip || '-'}</div>
+                                    {(previewInvoice as any).dostawca_adres && (
+                                        <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>{(previewInvoice as any).dostawca_adres}</div>
+                                    )}
                                 </div>
-                                <div style={{ marginTop: '12px' }}>
-                                    <div style={{ color: '#a0aec0', fontSize: '12px' }}>Status</div>
-                                    <div style={{ fontWeight: 600, color: previewInvoice.already_exists ? '#a0aec0' : '#48bb78' }}>
-                                        {previewInvoice.already_exists ? 'Już w bazie' : 'Nowa - można zaimportować'}
+                                
+                                {/* Nabywca */}
+                                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Nabywca</h4>
+                                    <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{(previewInvoice as any).nabywca || '-'}</div>
+                                    <div style={{ color: '#a0aec0', fontSize: '13px' }}>NIP: {(previewInvoice as any).nabywca_nip || '-'}</div>
+                                </div>
+                            </div>
+                            
+                            {/* Pozycje faktury */}
+                            {(previewInvoice as any).pozycje && (previewInvoice as any).pozycje.length > 0 && (
+                                <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Pozycje faktury ({(previewInvoice as any).pozycje.length})</h4>
+                                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid #4a5568' }}>
+                                                <th style={{ textAlign: 'left', padding: '8px 4px', color: '#a0aec0' }}>Nazwa</th>
+                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Ilość</th>
+                                                <th style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>J.m.</th>
+                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Cena netto</th>
+                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Wartość netto</th>
+                                                <th style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>VAT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(previewInvoice as any).pozycje.map((poz: any, idx: number) => (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #2d3748' }}>
+                                                    <td style={{ padding: '8px 4px', color: '#ffffff' }}>{poz.nazwa || '-'}</td>
+                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0' }}>{poz.ilosc || '-'}</td>
+                                                    <td style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>{poz.jednostka || '-'}</td>
+                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0' }}>{poz.cena_netto ? `${poz.cena_netto} zł` : '-'}</td>
+                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0', fontWeight: 500 }}>{poz.wartosc_netto ? `${poz.wartosc_netto} zł` : '-'}</td>
+                                                    <td style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>{poz.stawka_vat || '-'}%</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                            
+                            {/* Numer KSeF */}
+                            <div style={{ padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Numer KSeF</div>
+                                        <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' }}>{previewInvoice.ksef_numer}</div>
+                                    </div>
+                                    <div style={{ 
+                                        padding: '4px 12px', 
+                                        borderRadius: '4px',
+                                        background: previewInvoice.already_exists ? 'rgba(160, 174, 192, 0.2)' : 'rgba(72, 187, 120, 0.2)',
+                                        color: previewInvoice.already_exists ? '#a0aec0' : '#48bb78',
+                                        fontSize: '12px',
+                                        fontWeight: 500
+                                    }}>
+                                        {previewInvoice.already_exists ? 'Już w bazie' : 'Nowa'}
                                     </div>
                                 </div>
                             </div>
@@ -620,47 +691,76 @@ const KSeF: React.FC = () => {
                             <button 
                                 className="btn btn-secondary"
                                 onClick={() => {
-                                    const printContent = document.getElementById('ksef-invoice-print');
-                                    if (printContent) {
-                                        const printWindow = window.open('', '_blank');
-                                        if (printWindow) {
-                                            printWindow.document.write(`
-                                                <html>
-                                                <head>
-                                                    <title>Faktura ${previewInvoice.numer}</title>
-                                                    <style>
-                                                        body { font-family: Arial, sans-serif; padding: 20px; }
-                                                        h4 { color: #333; margin-bottom: 12px; }
-                                                        .section { margin-bottom: 20px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
-                                                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-                                                        .label { color: #666; font-size: 12px; }
-                                                        .value { font-weight: 600; color: #333; }
-                                                        .amount { color: #28a745; font-size: 1.2rem; }
-                                                        .ksef-num { font-family: monospace; font-size: 11px; word-break: break-all; }
-                                                    </style>
-                                                </head>
-                                                <body>
-                                                    <h2>Faktura KSeF</h2>
+                                    const inv = previewInvoice as any;
+                                    const pozycjeHtml = inv.pozycje && inv.pozycje.length > 0 ? `
+                                        <div class="section">
+                                            <h4>Pozycje faktury</h4>
+                                            <table>
+                                                <tr><th>Nazwa</th><th>Ilość</th><th>J.m.</th><th>Cena netto</th><th>Wartość netto</th><th>VAT</th></tr>
+                                                ${inv.pozycje.map((p: any) => `<tr><td>${p.nazwa||'-'}</td><td style="text-align:right">${p.ilosc||'-'}</td><td>${p.jednostka||'-'}</td><td style="text-align:right">${p.cena_netto||'-'} zł</td><td style="text-align:right">${p.wartosc_netto||'-'} zł</td><td>${p.stawka_vat||'-'}%</td></tr>`).join('')}
+                                            </table>
+                                        </div>` : '';
+                                    
+                                    const printWindow = window.open('', '_blank');
+                                    if (printWindow) {
+                                        printWindow.document.write(`
+                                            <html>
+                                            <head>
+                                                <title>Faktura ${previewInvoice.numer}</title>
+                                                <style>
+                                                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+                                                    h2 { margin-bottom: 20px; }
+                                                    h4 { color: #333; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+                                                    .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                                                    .section { margin-bottom: 20px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+                                                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+                                                    .label { color: #666; font-size: 12px; margin-bottom: 4px; }
+                                                    .value { font-weight: 600; color: #333; }
+                                                    .amount { color: #28a745; font-size: 1.5rem; font-weight: bold; }
+                                                    .ksef-num { font-family: monospace; font-size: 11px; word-break: break-all; color: #666; }
+                                                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                                                    th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
+                                                    th { background: #f5f5f5; }
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="header">
+                                                    <div>
+                                                        <h2>Faktura ${previewInvoice.numer}</h2>
+                                                        <div class="ksef-num">KSeF: ${previewInvoice.ksef_numer}</div>
+                                                    </div>
+                                                    <div style="text-align: right;">
+                                                        <div class="label">Kwota brutto</div>
+                                                        <div class="amount">${previewInvoice.kwota.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'})}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="section">
+                                                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                                                        <div><div class="label">Data wystawienia</div><div class="value">${previewInvoice.data}</div></div>
+                                                        <div><div class="label">Data sprzedaży</div><div class="value">${inv.data_sprzedazy || '-'}</div></div>
+                                                        <div><div class="label">Termin płatności</div><div class="value">${inv.termin_platnosci || '-'}</div></div>
+                                                        <div><div class="label">Forma płatności</div><div class="value">${inv.forma_platnosci || '-'}</div></div>
+                                                    </div>
+                                                </div>
+                                                <div class="grid">
                                                     <div class="section">
-                                                        <h4>Dane faktury</h4>
-                                                        <div class="grid">
-                                                            <div><div class="label">Numer faktury</div><div class="value">${previewInvoice.numer}</div></div>
-                                                            <div><div class="label">Data wystawienia</div><div class="value">${previewInvoice.data}</div></div>
-                                                            <div><div class="label">Dostawca</div><div class="value">${previewInvoice.dostawca}</div></div>
-                                                            <div><div class="label">Kwota brutto</div><div class="value amount">${previewInvoice.kwota.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'})}</div></div>
-                                                        </div>
+                                                        <h4>Sprzedawca</h4>
+                                                        <div class="value">${previewInvoice.dostawca}</div>
+                                                        <div>NIP: ${inv.dostawca_nip || '-'}</div>
+                                                        <div style="font-size: 12px; color: #666;">${inv.dostawca_adres || ''}</div>
                                                     </div>
                                                     <div class="section">
-                                                        <h4>Dane KSeF</h4>
-                                                        <div class="label">Numer KSeF</div>
-                                                        <div class="ksef-num">${previewInvoice.ksef_numer}</div>
+                                                        <h4>Nabywca</h4>
+                                                        <div class="value">${inv.nabywca || '-'}</div>
+                                                        <div>NIP: ${inv.nabywca_nip || '-'}</div>
                                                     </div>
-                                                </body>
-                                                </html>
-                                            `);
-                                            printWindow.document.close();
-                                            printWindow.print();
-                                        }
+                                                </div>
+                                                ${pozycjeHtml}
+                                            </body>
+                                            </html>
+                                        `);
+                                        printWindow.document.close();
+                                        printWindow.print();
                                     }
                                 }}
                             >
@@ -668,6 +768,16 @@ const KSeF: React.FC = () => {
                                     <polyline points="6 9 6 2 18 2 18 9" />
                                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                                     <rect x="6" y="14" width="12" height="8" />
+                                </svg>
+                                Drukuj
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setPreviewInvoice(null)}>
+                                Zamknij
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
                                 </svg>
                                 Drukuj
                             </button>

@@ -418,83 +418,217 @@ class KSeFService:
         return invoices
     
     def _parse_invoice_xml(self, xml_content: str, filename: str = '') -> Optional[Dict]:
-        """Parsuj XML faktury."""
+        """Parsuj XML faktury KSeF."""
         try:
             import xml.etree.ElementTree as ET
             import re
             
             root = ET.fromstring(xml_content)
             
-            # Spróbuj różne namespaces używane przez KSeF
-            namespaces = [
-                {'fa': 'http://crd.gov.pl/wzor/2023/06/29/12648/'},
-                {'fa': 'http://crd.gov.pl/wzor/2024/01/01/12648/'},
-                {'fa': 'http://ksef.mf.gov.pl/schema/v1/FA'},
-                {},  # bez namespace
-            ]
+            # Znajdź namespace używany w dokumencie
+            ns_match = re.search(r'\{([^}]+)\}', root.tag)
+            ns_uri = ns_match.group(1) if ns_match else ''
+            ns = {'fa': ns_uri} if ns_uri else {}
             
-            numer = ''
-            data = ''
-            netto = Decimal('0')
-            vat = Decimal('0')
-            sprzedawca = ''
-            nip_sprzedawcy = ''
+            def find_text(paths, default=''):
+                """Helper do szukania tekstu w różnych ścieżkach."""
+                for path in paths:
+                    try:
+                        if ns:
+                            result = root.findtext(path, default=None, namespaces=ns)
+                        else:
+                            result = root.findtext(path, default=None)
+                        if result:
+                            return result.strip()
+                    except:
+                        pass
+                return default
             
-            # Wyciągnij numer KSeF z nazwy pliku jeśli możliwe
-            ksef_numer = ''
-            if filename:
-                # Nazwa pliku często zawiera numer KSeF
-                ksef_numer = filename.replace('.xml', '')
+            def find_all_text(paths):
+                """Helper do szukania wszystkich wystąpień."""
+                results = []
+                for path in paths:
+                    try:
+                        if ns:
+                            elements = root.findall(path, namespaces=ns)
+                        else:
+                            elements = root.findall(path)
+                        for el in elements:
+                            if el.text:
+                                results.append(el.text.strip())
+                    except:
+                        pass
+                return results
             
-            for ns in namespaces:
+            # Wyciągnij numer KSeF z nazwy pliku
+            ksef_numer = filename.replace('.xml', '') if filename else ''
+            
+            # Podstawowe dane faktury
+            numer = find_text(['.//fa:P_2', './/P_2', './/{*}P_2'])
+            data_wystawienia = find_text(['.//fa:P_1', './/P_1', './/{*}P_1'])
+            data_sprzedazy = find_text(['.//fa:P_6', './/P_6', './/{*}P_6'])
+            
+            # Termin płatności - P_19A lub TerminPlatnosci
+            termin_platnosci = find_text([
+                './/fa:Platnosc//fa:TerminPlatnosci//fa:Termin',
+                './/fa:TerminPlatnosci//fa:Termin',
+                './/fa:P_19A',
+                './/Platnosc//TerminPlatnosci//Termin',
+                './/{*}Platnosc//{*}TerminPlatnosci//{*}Termin',
+                './/{*}P_19A',
+            ])
+            
+            # Kwoty - P_15 to suma brutto (należność ogółem)
+            kwota_brutto_str = find_text(['.//fa:P_15', './/P_15', './/{*}P_15'], '0')
+            
+            # Jeśli nie ma P_15, spróbuj zsumować netto + VAT
+            if not kwota_brutto_str or kwota_brutto_str == '0':
+                # Zbierz wszystkie kwoty netto (P_13_1 do P_13_11)
+                netto_values = []
+                for i in range(1, 12):
+                    val = find_text([f'.//fa:P_13_{i}', f'.//P_13_{i}', f'.//*P_13_{i}'], '0')
+                    if val and val != '0':
+                        netto_values.append(Decimal(val))
+                
+                # Zbierz wszystkie kwoty VAT (P_14_1 do P_14_5)
+                vat_values = []
+                for i in range(1, 6):
+                    val = find_text([f'.//fa:P_14_{i}', f'.//P_14_{i}', f'.//*P_14_{i}'], '0')
+                    if val and val != '0':
+                        vat_values.append(Decimal(val))
+                
+                kwota_brutto = sum(netto_values, Decimal('0')) + sum(vat_values, Decimal('0'))
+            else:
+                kwota_brutto = Decimal(kwota_brutto_str.replace(',', '.').replace(' ', ''))
+            
+            # Sprzedawca (Podmiot1)
+            sprzedawca_nazwa = find_text([
+                './/fa:Podmiot1//fa:DaneIdentyfikacyjne//fa:Nazwa',
+                './/fa:Podmiot1//fa:Nazwa',
+                './/Podmiot1//DaneIdentyfikacyjne//Nazwa',
+                './/{*}Podmiot1//{*}DaneIdentyfikacyjne//{*}Nazwa',
+                './/{*}Podmiot1//{*}Nazwa',
+            ])
+            sprzedawca_nip = find_text([
+                './/fa:Podmiot1//fa:DaneIdentyfikacyjne//fa:NIP',
+                './/fa:Podmiot1//fa:NIP',
+                './/{*}Podmiot1//{*}NIP',
+            ])
+            sprzedawca_adres = find_text([
+                './/fa:Podmiot1//fa:Adres//fa:AdresL1',
+                './/{*}Podmiot1//{*}Adres//{*}AdresL1',
+            ])
+            sprzedawca_miasto = find_text([
+                './/fa:Podmiot1//fa:Adres//fa:AdresL2',
+                './/{*}Podmiot1//{*}Adres//{*}AdresL2',
+            ])
+            
+            # Nabywca (Podmiot2)
+            nabywca_nazwa = find_text([
+                './/fa:Podmiot2//fa:DaneIdentyfikacyjne//fa:Nazwa',
+                './/fa:Podmiot2//fa:Nazwa',
+                './/{*}Podmiot2//{*}DaneIdentyfikacyjne//{*}Nazwa',
+            ])
+            nabywca_nip = find_text([
+                './/fa:Podmiot2//fa:DaneIdentyfikacyjne//fa:NIP',
+                './/fa:Podmiot2//fa:NIP',
+                './/{*}Podmiot2//{*}NIP',
+            ])
+            
+            # Pozycje faktury - FaWiersz
+            pozycje = []
+            wiersz_paths = ['.//fa:FaWiersz', './/FaWiersz', './/{*}FaWiersz']
+            for path in wiersz_paths:
                 try:
-                    # Różne ścieżki w zależności od wersji schematu
-                    numer = (root.findtext('.//fa:P_2', default='', namespaces=ns) or
-                             root.findtext('.//P_2', default='') or
-                             root.findtext('.//{*}P_2', default=''))
+                    if ns:
+                        wiersze = root.findall(path, namespaces=ns)
+                    else:
+                        wiersze = root.findall(path)
                     
-                    data = (root.findtext('.//fa:P_1', default='', namespaces=ns) or
-                            root.findtext('.//P_1', default='') or
-                            root.findtext('.//{*}P_1', default=''))
-                    
-                    netto_str = (root.findtext('.//fa:P_13_1', default='0', namespaces=ns) or
-                                root.findtext('.//P_13_1', default='0') or
-                                root.findtext('.//{*}P_13_1', default='0'))
-                    vat_str = (root.findtext('.//fa:P_14_1', default='0', namespaces=ns) or
-                              root.findtext('.//P_14_1', default='0') or
-                              root.findtext('.//{*}P_14_1', default='0'))
-                    
-                    sprzedawca = (root.findtext('.//fa:Podmiot1//fa:Nazwa', default='', namespaces=ns) or
-                                 root.findtext('.//Podmiot1//Nazwa', default='') or
-                                 root.findtext('.//{*}Podmiot1//{*}Nazwa', default=''))
-                    
-                    nip_sprzedawcy = (root.findtext('.//fa:Podmiot1//fa:NIP', default='', namespaces=ns) or
-                                     root.findtext('.//Podmiot1//NIP', default='') or
-                                     root.findtext('.//{*}Podmiot1//{*}NIP', default=''))
-                    
-                    netto = Decimal(netto_str or '0')
-                    vat = Decimal(vat_str or '0')
-                    
-                    if numer or sprzedawca:
+                    if wiersze:
+                        for wiersz in wiersze:
+                            poz = {}
+                            # Nazwa towaru/usługi
+                            for name_path in ['fa:P_7', 'P_7', '{*}P_7']:
+                                el = wiersz.find(name_path, namespaces=ns) if ns else wiersz.find(name_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['nazwa'] = el.text.strip()
+                                    break
+                            
+                            # Ilość
+                            for qty_path in ['fa:P_8B', 'P_8B']:
+                                el = wiersz.find(qty_path, namespaces=ns) if ns else wiersz.find(qty_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['ilosc'] = el.text.strip()
+                                    break
+                            
+                            # Jednostka
+                            for unit_path in ['fa:P_8A', 'P_8A']:
+                                el = wiersz.find(unit_path, namespaces=ns) if ns else wiersz.find(unit_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['jednostka'] = el.text.strip()
+                                    break
+                            
+                            # Cena jednostkowa netto
+                            for price_path in ['fa:P_9A', 'P_9A']:
+                                el = wiersz.find(price_path, namespaces=ns) if ns else wiersz.find(price_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['cena_netto'] = el.text.strip()
+                                    break
+                            
+                            # Wartość netto
+                            for val_path in ['fa:P_11', 'P_11']:
+                                el = wiersz.find(val_path, namespaces=ns) if ns else wiersz.find(val_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['wartosc_netto'] = el.text.strip()
+                                    break
+                            
+                            # Stawka VAT
+                            for vat_path in ['fa:P_12', 'P_12']:
+                                el = wiersz.find(vat_path, namespaces=ns) if ns else wiersz.find(vat_path.replace('fa:', ''))
+                                if el is not None and el.text:
+                                    poz['stawka_vat'] = el.text.strip()
+                                    break
+                            
+                            if poz.get('nazwa'):
+                                pozycje.append(poz)
                         break
-                except:
+                except Exception as e:
+                    logger.debug(f"Error parsing positions: {e}")
                     continue
             
-            logger.info(f"Parsed XML {filename}: numer={numer}, data={data}, sprzedawca={sprzedawca}, kwota={netto+vat}")
+            # Waluta
+            waluta = find_text(['.//fa:KodWaluty', './/KodWaluty', './/{*}KodWaluty'], 'PLN')
             
-            if not numer and not sprzedawca:
+            # Forma płatności
+            forma_platnosci = find_text([
+                './/fa:Platnosc//fa:FormaPlatnosci',
+                './/{*}Platnosc//{*}FormaPlatnosci',
+            ])
+            
+            logger.info(f"Parsed XML {filename}: numer={numer}, data={data_wystawienia}, "
+                       f"kwota={kwota_brutto}, termin={termin_platnosci}, pozycji={len(pozycje)}")
+            
+            if not numer and not sprzedawca_nazwa:
                 logger.warning(f"Could not parse invoice from {filename}")
-                # Log fragment XML for debugging
-                logger.debug(f"XML content (first 500 chars): {xml_content[:500]}")
+                logger.debug(f"XML content (first 1000 chars): {xml_content[:1000]}")
                 return None
             
             return {
                 'ksef_numer': ksef_numer,
                 'numer': numer,
-                'data': data[:10] if data else '',
-                'kwota': netto + vat,
-                'dostawca': sprzedawca,
-                'dostawca_nip': nip_sprzedawcy,
+                'data': data_wystawienia[:10] if data_wystawienia else '',
+                'data_sprzedazy': data_sprzedazy[:10] if data_sprzedazy else '',
+                'termin_platnosci': termin_platnosci[:10] if termin_platnosci else '',
+                'kwota': float(kwota_brutto),
+                'waluta': waluta,
+                'dostawca': sprzedawca_nazwa,
+                'dostawca_nip': sprzedawca_nip,
+                'dostawca_adres': f"{sprzedawca_adres}, {sprzedawca_miasto}".strip(', '),
+                'nabywca': nabywca_nazwa,
+                'nabywca_nip': nabywca_nip,
+                'forma_platnosci': forma_platnosci,
+                'pozycje': pozycje,
             }
         except Exception as e:
             logger.error(f"Błąd parsowania XML {filename}: {e}", exc_info=True)

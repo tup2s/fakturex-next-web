@@ -154,13 +154,31 @@ export const markInvoiceUnpaid = async (id: number): Promise<Invoice> => {
   return response.data;
 };
 
+export interface KSeFInvoicePozycja {
+  nazwa?: string;
+  ilosc?: string;
+  jednostka?: string;
+  cena_netto?: string;
+  wartosc_netto?: string;
+  stawka_vat?: string;
+}
+
 export interface KSeFInvoice {
   numer: string;
   data: string;
+  data_sprzedazy?: string;
+  termin_platnosci?: string;
   kwota: number;
+  waluta?: string;
   dostawca: string;
+  dostawca_nip?: string;
+  dostawca_adres?: string;
+  nabywca?: string;
+  nabywca_nip?: string;
+  forma_platnosci?: string;
   ksef_numer: string;
   already_exists: boolean;
+  pozycje?: KSeFInvoicePozycja[];
 }
 
 export const fetchFromKSeF = async (dateFrom?: string, dateTo?: string): Promise<{
