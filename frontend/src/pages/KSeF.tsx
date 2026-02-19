@@ -137,7 +137,7 @@ const KSeF: React.FC = () => {
 
             {/* Status połączenia */}
             <div className="card" style={{ marginBottom: '24px' }}>
-                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
@@ -177,146 +177,146 @@ const KSeF: React.FC = () => {
                     
                     {settings?.firma_nip && (
                         <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                            <div style={{ color: 'var(--text-label)', fontSize: '12px', marginBottom: '4px' }}>NIP firmy</div>
-                            <div style={{ fontWeight: 600 }}>{settings.firma_nip}</div>
+                            <div style={{ color: '#a0aec0', fontSize: '12px', marginBottom: '4px' }}>NIP firmy</div>
+                            <div style={{ fontWeight: 600, color: '#ffffff' }}>{settings.firma_nip}</div>
                         </div>
                     )}
                     
                     {settings?.ksef_environment && (
                         <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                            <div style={{ color: 'var(--text-label)', fontSize: '12px', marginBottom: '4px' }}>Środowisko</div>
-                            <div style={{ fontWeight: 600 }}>{getEnvironmentLabel(settings.ksef_environment)}</div>
+                            <div style={{ color: '#a0aec0', fontSize: '12px', marginBottom: '4px' }}>Środowisko</div>
+                            <div style={{ fontWeight: 600, color: '#ffffff' }}>{getEnvironmentLabel(settings.ksef_environment)}</div>
                         </div>
                     )}
                 </div>
 
+            </div>
+
+            {/* Pobieranie faktur - zawsze widoczne */}
+            <div className="card" style={{ marginBottom: '24px' }}>
+                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Pobierz faktury
+                </h3>
+                
+                <p style={{ marginBottom: '20px', color: '#cbd5e0' }}>
+                    Wybierz zakres dat, z którego chcesz pobrać faktury kosztowe z Krajowego Systemu e-Faktur.
+                    Pobrane faktury zostaną automatycznie zapisane w zakładce Faktury.
+                </p>
+                
                 {!isConfigured && (
                     <div style={{ 
-                        marginTop: '16px', 
+                        marginBottom: '20px', 
                         padding: '12px 16px', 
-                        background: 'var(--warning-bg)', 
+                        background: 'rgba(237, 137, 54, 0.2)', 
                         borderRadius: '8px',
-                        color: 'var(--text-primary)'
+                        border: '1px solid #ed8936',
+                        color: '#ffffff'
                     }}>
-                        <strong>Uwaga:</strong> Aby pobierać faktury z KSeF, przejdź do{' '}
-                        <a href="/settings" style={{ color: 'var(--primary)', fontWeight: 600 }}>Ustawień</a>{' '}
+                        <strong>Uwaga:</strong> Aby pobierać faktury, przejdź do{' '}
+                        <a href="/settings" style={{ color: '#4299e1', fontWeight: 600 }}>Ustawień</a>{' '}
                         i skonfiguruj token KSeF oraz NIP firmy.
                     </div>
                 )}
-            </div>
-
-            {/* Pobieranie faktur */}
-            {isConfigured && (
-                <div className="card" style={{ marginBottom: '24px' }}>
-                    <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        Pobierz faktury
-                    </h3>
-                    
-                    <p style={{ marginBottom: '20px', color: 'var(--text-label)' }}>
-                        Wybierz zakres dat, z którego chcesz pobrać faktury kosztowe z Krajowego Systemu e-Faktur.
-                        Pobrane faktury zostaną automatycznie zapisane w zakładce Faktury.
-                    </p>
-                    
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Data od</label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                style={{ minWidth: '150px' }}
-                            />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Data do</label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                style={{ minWidth: '150px' }}
-                            />
-                        </div>
-                        <button 
-                            className="btn btn-primary" 
-                            onClick={handleFetchFromKSeF}
-                            disabled={fetchLoading}
-                            style={{ height: '42px' }}
-                        >
-                            {fetchLoading ? (
-                                <>
-                                    <span className="spinner" style={{ width: '16px', height: '16px', marginRight: '8px' }}></span>
-                                    Pobieranie...
-                                </>
-                            ) : (
-                                <>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px', marginRight: '8px' }}>
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                        <polyline points="7 10 12 15 17 10" />
-                                        <line x1="12" y1="15" x2="12" y2="3" />
-                                    </svg>
-                                    Pobierz z KSeF
-                                </>
-                            )}
-                        </button>
+                
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: '#e2e8f0' }}>Data od</label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            style={{ minWidth: '150px' }}
+                        />
                     </div>
-                    
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button 
-                            type="button" 
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => setQuickDateRange(7)}
-                        >
-                            Ostatnie 7 dni
-                        </button>
-                        <button 
-                            type="button" 
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => setQuickDateRange(30)}
-                        >
-                            Ostatnie 30 dni
-                        </button>
-                        <button 
-                            type="button" 
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => setQuickDateRange(90)}
-                        >
-                            Ostatnie 90 dni
-                        </button>
-                        <button 
-                            type="button" 
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => {
-                                const now = new Date();
-                                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                                setDateFrom(firstDay.toISOString().split('T')[0]);
-                                setDateTo(now.toISOString().split('T')[0]);
-                            }}
-                        >
-                            Bieżący miesiąc
-                        </button>
-                        <button 
-                            type="button" 
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => {
-                                const now = new Date();
-                                const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                                const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-                                setDateFrom(firstDay.toISOString().split('T')[0]);
-                                setDateTo(lastDay.toISOString().split('T')[0]);
-                            }}
-                        >
-                            Poprzedni miesiąc
-                        </button>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: '#e2e8f0' }}>Data do</label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            style={{ minWidth: '150px' }}
+                        />
+                    </div>
+                    <button 
+                        className="btn btn-primary" 
+                        onClick={handleFetchFromKSeF}
+                        disabled={fetchLoading || !isConfigured}
+                        style={{ height: '42px' }}
+                    >
+                        {fetchLoading ? (
+                            <>
+                                <span className="spinner" style={{ width: '16px', height: '16px', marginRight: '8px' }}></span>
+                                Pobieranie...
+                            </>
+                        ) : (
+                            <>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px', marginRight: '8px' }}>
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                Pobierz z KSeF
+                            </>
+                        )}
+                    </button>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setQuickDateRange(7)}
+                    >
+                        Ostatnie 7 dni
+                    </button>
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setQuickDateRange(30)}
+                    >
+                        Ostatnie 30 dni
+                    </button>
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => setQuickDateRange(90)}
+                    >
+                        Ostatnie 90 dni
+                    </button>
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                            const now = new Date();
+                            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                            setDateFrom(firstDay.toISOString().split('T')[0]);
+                            setDateTo(now.toISOString().split('T')[0]);
+                        }}
+                    >
+                        Bieżący miesiąc
+                    </button>
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                            const now = new Date();
+                            const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                            const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                            setDateFrom(firstDay.toISOString().split('T')[0]);
+                            setDateTo(lastDay.toISOString().split('T')[0]);
+                        }}
+                    >
+                        Poprzedni miesiąc
+                    </button>
                     </div>
                 </div>
-            )}
 
             {/* Komunikat */}
             {message && (
@@ -365,7 +365,7 @@ const KSeF: React.FC = () => {
                             background: 'none', 
                             border: 'none', 
                             cursor: 'pointer',
-                            color: 'var(--text-secondary)',
+                            color: '#ffffff',
                             fontSize: '20px',
                             lineHeight: 1
                         }}
@@ -377,7 +377,7 @@ const KSeF: React.FC = () => {
 
             {/* Informacje o API 2.0 */}
             <div className="card">
-                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '20px', height: '20px' }}>
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="16" x2="12" y2="12" />
@@ -386,7 +386,7 @@ const KSeF: React.FC = () => {
                     Informacje o KSeF API 2.0
                 </h3>
                 
-                <div style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div style={{ color: '#cbd5e0', lineHeight: 1.6 }}>
                     <p style={{ marginBottom: '12px' }}>
                         Aplikacja korzysta z nowej wersji API KSeF 2.0, która zastąpiła poprzednie API 1.0 
                         (wyłączone 2 lutego 2026).

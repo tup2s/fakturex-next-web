@@ -144,6 +144,7 @@ export const fetchFromKSeF = async (dateFrom?: string, dateTo?: string): Promise
   environment?: string;
   nip?: string;
   imported_count: number;
+  skipped_count?: number;
   error?: string;
 }> => {
   const response = await apiClient.post('/invoices/fetch_from_ksef/', {
