@@ -384,48 +384,112 @@ class KSeFService:
             logger.error(f"KSeF fallback exception: {e}", exc_info=True)
             return [], f"Błąd pobierania faktur: {str(e)}"
     
-    def _parse_export_file(self, path: str) -> List[Dict]:
+    def _parse_export_file(self, path) -> List[Dict]:
         """Parsuj plik eksportu z KSeF."""
         invoices = []
         try:
             import zipfile
             import xml.etree.ElementTree as ET
+            from pathlib import Path
             
-            if path.endswith('.zip'):
-                with zipfile.ZipFile(path, 'r') as zf:
-                    for name in zf.namelist():
-                        if name.endswith('.xml'):
-                            with zf.open(name) as f:
-                                inv = self._parse_invoice_xml(f.read().decode('utf-8'))
-                                if inv:
-                                    invoices.append(inv)
+            # Konwertuj na string jeśli to Path
+            path_str = str(path)
+            
+            logger.info(f"Parsing export file: {path_str}")
+            
+            if path_str.endswith('.zip'):
+                with zipfile.ZipFile(path_str, 'r') as zf:
+                    xml_files = [n for n in zf.namelist() if n.endswith('.xml')]
+                    logger.info(f"Found {len(xml_files)} XML files in ZIP: {xml_files}")
+                    
+                    for name in xml_files:
+                        with zf.open(name) as f:
+                            xml_content = f.read().decode('utf-8')
+                            logger.debug(f"Parsing XML: {name}, length={len(xml_content)}")
+                            inv = self._parse_invoice_xml(xml_content, name)
+                            if inv:
+                                invoices.append(inv)
+                                logger.info(f"Parsed invoice: {inv.get('numer', 'unknown')}")
+            else:
+                logger.warning(f"File is not a ZIP: {path_str}")
         except Exception as e:
-            logger.error(f"Błąd parsowania eksportu: {e}")
+            logger.error(f"Błąd parsowania eksportu: {e}", exc_info=True)
         
         return invoices
     
-    def _parse_invoice_xml(self, xml_content: str) -> Optional[Dict]:
+    def _parse_invoice_xml(self, xml_content: str, filename: str = '') -> Optional[Dict]:
         """Parsuj XML faktury."""
         try:
             import xml.etree.ElementTree as ET
+            import re
             
             root = ET.fromstring(xml_content)
-            ns = {'fa': 'http://crd.gov.pl/wzor/2023/06/29/12648/'}
             
-            # Pobierz podstawowe dane
-            numer = root.findtext('.//fa:P_2', default='', namespaces=ns)
-            data = root.findtext('.//fa:P_1', default='', namespaces=ns)
+            # Spróbuj różne namespaces używane przez KSeF
+            namespaces = [
+                {'fa': 'http://crd.gov.pl/wzor/2023/06/29/12648/'},
+                {'fa': 'http://crd.gov.pl/wzor/2024/01/01/12648/'},
+                {'fa': 'http://ksef.mf.gov.pl/schema/v1/FA'},
+                {},  # bez namespace
+            ]
             
-            # Kwoty
-            netto = Decimal(root.findtext('.//fa:P_13_1', default='0', namespaces=ns) or '0')
-            vat = Decimal(root.findtext('.//fa:P_14_1', default='0', namespaces=ns) or '0')
+            numer = ''
+            data = ''
+            netto = Decimal('0')
+            vat = Decimal('0')
+            sprzedawca = ''
+            nip_sprzedawcy = ''
             
-            # Sprzedawca
-            sprzedawca = root.findtext('.//fa:Podmiot1//fa:Nazwa', default='', namespaces=ns)
-            nip_sprzedawcy = root.findtext('.//fa:Podmiot1//fa:NIP', default='', namespaces=ns)
+            # Wyciągnij numer KSeF z nazwy pliku jeśli możliwe
+            ksef_numer = ''
+            if filename:
+                # Nazwa pliku często zawiera numer KSeF
+                ksef_numer = filename.replace('.xml', '')
+            
+            for ns in namespaces:
+                try:
+                    # Różne ścieżki w zależności od wersji schematu
+                    numer = (root.findtext('.//fa:P_2', default='', namespaces=ns) or
+                             root.findtext('.//P_2', default='') or
+                             root.findtext('.//{*}P_2', default=''))
+                    
+                    data = (root.findtext('.//fa:P_1', default='', namespaces=ns) or
+                            root.findtext('.//P_1', default='') or
+                            root.findtext('.//{*}P_1', default=''))
+                    
+                    netto_str = (root.findtext('.//fa:P_13_1', default='0', namespaces=ns) or
+                                root.findtext('.//P_13_1', default='0') or
+                                root.findtext('.//{*}P_13_1', default='0'))
+                    vat_str = (root.findtext('.//fa:P_14_1', default='0', namespaces=ns) or
+                              root.findtext('.//P_14_1', default='0') or
+                              root.findtext('.//{*}P_14_1', default='0'))
+                    
+                    sprzedawca = (root.findtext('.//fa:Podmiot1//fa:Nazwa', default='', namespaces=ns) or
+                                 root.findtext('.//Podmiot1//Nazwa', default='') or
+                                 root.findtext('.//{*}Podmiot1//{*}Nazwa', default=''))
+                    
+                    nip_sprzedawcy = (root.findtext('.//fa:Podmiot1//fa:NIP', default='', namespaces=ns) or
+                                     root.findtext('.//Podmiot1//NIP', default='') or
+                                     root.findtext('.//{*}Podmiot1//{*}NIP', default=''))
+                    
+                    netto = Decimal(netto_str or '0')
+                    vat = Decimal(vat_str or '0')
+                    
+                    if numer or sprzedawca:
+                        break
+                except:
+                    continue
+            
+            logger.info(f"Parsed XML {filename}: numer={numer}, data={data}, sprzedawca={sprzedawca}, kwota={netto+vat}")
+            
+            if not numer and not sprzedawca:
+                logger.warning(f"Could not parse invoice from {filename}")
+                # Log fragment XML for debugging
+                logger.debug(f"XML content (first 500 chars): {xml_content[:500]}")
+                return None
             
             return {
-                'ksef_numer': '',  # Zostanie uzupełniony z nagłówka
+                'ksef_numer': ksef_numer,
                 'numer': numer,
                 'data': data[:10] if data else '',
                 'kwota': netto + vat,
@@ -433,7 +497,7 @@ class KSeFService:
                 'dostawca_nip': nip_sprzedawcy,
             }
         except Exception as e:
-            logger.error(f"Błąd parsowania XML: {e}")
+            logger.error(f"Błąd parsowania XML {filename}: {e}", exc_info=True)
             return None
     
     def _parse_invoice_header(self, header: Dict) -> Optional[Dict]:
