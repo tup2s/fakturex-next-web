@@ -474,21 +474,23 @@ const KSeF: React.FC = () => {
                     </div>
                     
                     <div style={{ overflowX: 'auto' }}>
-                        <table className="table" style={{ minWidth: '700px' }}>
+                        <table className="table compact" style={{ minWidth: '800px' }}>
                             <thead>
                                 <tr>
                                     <th style={{ width: '40px', textAlign: 'center' }}></th>
                                     <th>Numer faktury</th>
                                     <th>Data</th>
+                                    <th>Termin płatności</th>
                                     <th>Dostawca</th>
                                     <th style={{ textAlign: 'right' }}>Kwota</th>
-                                    <th>Numer KSeF</th>
                                     <th style={{ textAlign: 'center' }}>Status</th>
                                     <th style={{ textAlign: 'center' }}>Akcje</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {lastFetchResult.invoices.map((invoice) => (
+                                {lastFetchResult.invoices.map((invoice) => {
+                                    const inv = invoice as any;
+                                    return (
                                     <tr 
                                         key={invoice.ksef_numer}
                                         style={{ 
@@ -511,12 +513,12 @@ const KSeF: React.FC = () => {
                                         </td>
                                         <td style={{ fontWeight: 500, color: '#ffffff' }}>{invoice.numer}</td>
                                         <td style={{ color: '#e2e8f0' }}>{invoice.data}</td>
+                                        <td style={{ color: inv.termin_platnosci ? '#ed8936' : '#a0aec0' }}>
+                                            {inv.termin_platnosci || '-'}
+                                        </td>
                                         <td style={{ color: '#e2e8f0' }}>{invoice.dostawca}</td>
                                         <td style={{ textAlign: 'right', fontWeight: 500, color: '#ffffff' }}>
                                             {formatCurrency(invoice.kwota)}
-                                        </td>
-                                        <td style={{ color: '#a0aec0', fontSize: '12px', fontFamily: 'monospace' }}>
-                                            {invoice.ksef_numer}
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
                                             {invoice.already_exists ? (
@@ -555,7 +557,7 @@ const KSeF: React.FC = () => {
                                             <button
                                                 className="btn btn-sm btn-secondary"
                                                 onClick={() => setPreviewInvoice(invoice)}
-                                                title="Podgląd"
+                                                title="Podgląd faktury"
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '14px', height: '14px' }}>
                                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -564,203 +566,197 @@ const KSeF: React.FC = () => {
                                             </button>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 </div>
             )}
 
-            {/* Preview Modal */}
-            {previewInvoice && (
+            {/* Preview Modal - Podgląd faktury */}
+            {previewInvoice && (() => {
+                const inv = previewInvoice as any;
+                return (
                 <div className="modal-overlay" onClick={() => setPreviewInvoice(null)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}>
-                        <div className="modal-header">
-                            <h3>Podgląd faktury KSeF</h3>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '95vh', overflow: 'auto', padding: 0 }}>
+                        <div className="modal-header" style={{ borderBottom: '1px solid #333' }}>
+                            <h3>Podgląd faktury</h3>
                             <button className="modal-close" onClick={() => setPreviewInvoice(null)}>&times;</button>
                         </div>
-                        <div className="modal-body" id="ksef-invoice-print">
-                            {/* Nagłówek */}
-                            <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Numer faktury</div>
-                                        <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1.3rem' }}>{previewInvoice.numer}</div>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ color: '#a0aec0', fontSize: '12px' }}>Kwota brutto</div>
-                                        <div style={{ fontWeight: 700, color: '#48bb78', fontSize: '1.5rem' }}>
-                                            {formatCurrency(previewInvoice.kwota)} {(previewInvoice as any).waluta && (previewInvoice as any).waluta !== 'PLN' ? (previewInvoice as any).waluta : ''}
-                                        </div>
-                                    </div>
+                        
+                        {/* Dokument faktury - biały styl */}
+                        <div id="ksef-invoice-print" style={{ 
+                            background: '#ffffff', 
+                            color: '#000000', 
+                            padding: '40px',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: '12px',
+                            lineHeight: 1.4
+                        }}>
+                            {/* Nagłówek faktury */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', borderBottom: '2px solid #333', paddingBottom: '20px' }}>
+                                <div>
+                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>FAKTURA VAT</div>
+                                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{previewInvoice.numer}</div>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Data wystawienia</div>
-                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{previewInvoice.data}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Data sprzedaży</div>
-                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{(previewInvoice as any).data_sprzedazy || '-'}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Termin płatności</div>
-                                        <div style={{ fontWeight: 500, color: (previewInvoice as any).termin_platnosci ? '#ed8936' : '#ffffff' }}>
-                                            {(previewInvoice as any).termin_platnosci || '-'}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Forma płatności</div>
-                                        <div style={{ fontWeight: 500, color: '#ffffff' }}>{(previewInvoice as any).forma_platnosci || '-'}</div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Dokument KSeF</div>
+                                    <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#999', maxWidth: '200px', wordBreak: 'break-all' }}>
+                                        {previewInvoice.ksef_numer}
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* Strony */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                            {/* Daty */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+                                <div>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Data wystawienia</div>
+                                    <div style={{ fontWeight: 'bold' }}>{previewInvoice.data}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Data sprzedaży</div>
+                                    <div style={{ fontWeight: 'bold' }}>{inv.data_sprzedazy || previewInvoice.data}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Termin płatności</div>
+                                    <div style={{ fontWeight: 'bold', color: inv.termin_platnosci ? '#c00' : '#333' }}>{inv.termin_platnosci || '-'}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Forma płatności</div>
+                                    <div style={{ fontWeight: 'bold' }}>{inv.forma_platnosci || 'przelew'}</div>
+                                </div>
+                            </div>
+                            
+                            {/* Strony transakcji */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginBottom: '30px' }}>
                                 {/* Sprzedawca */}
-                                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Sprzedawca</h4>
-                                    <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{previewInvoice.dostawca}</div>
-                                    <div style={{ color: '#a0aec0', fontSize: '13px' }}>NIP: {(previewInvoice as any).dostawca_nip || '-'}</div>
-                                    {(previewInvoice as any).dostawca_adres && (
-                                        <div style={{ color: '#a0aec0', fontSize: '12px', marginTop: '4px' }}>{(previewInvoice as any).dostawca_adres}</div>
-                                    )}
+                                <div style={{ padding: '16px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>Sprzedawca</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{previewInvoice.dostawca}</div>
+                                    <div style={{ marginBottom: '4px' }}>NIP: <strong>{inv.dostawca_nip || '-'}</strong></div>
+                                    {inv.dostawca_adres && <div style={{ fontSize: '11px', color: '#555' }}>{inv.dostawca_adres}</div>}
                                 </div>
                                 
                                 {/* Nabywca */}
-                                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Nabywca</h4>
-                                    <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{(previewInvoice as any).nabywca || '-'}</div>
-                                    <div style={{ color: '#a0aec0', fontSize: '13px' }}>NIP: {(previewInvoice as any).nabywca_nip || '-'}</div>
+                                <div style={{ padding: '16px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                                    <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>Nabywca</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{inv.nabywca || '-'}</div>
+                                    <div>NIP: <strong>{inv.nabywca_nip || '-'}</strong></div>
                                 </div>
                             </div>
                             
                             {/* Pozycje faktury */}
-                            {(previewInvoice as any).pozycje && (previewInvoice as any).pozycje.length > 0 && (
-                                <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                                    <h4 style={{ marginBottom: '12px', color: '#4299e1', fontSize: '14px' }}>Pozycje faktury ({(previewInvoice as any).pozycje.length})</h4>
-                                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ borderBottom: '1px solid #4a5568' }}>
-                                                <th style={{ textAlign: 'left', padding: '8px 4px', color: '#a0aec0' }}>Nazwa</th>
-                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Ilość</th>
-                                                <th style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>J.m.</th>
-                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Cena netto</th>
-                                                <th style={{ textAlign: 'right', padding: '8px 4px', color: '#a0aec0' }}>Wartość netto</th>
-                                                <th style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>VAT</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(previewInvoice as any).pozycje.map((poz: any, idx: number) => (
-                                                <tr key={idx} style={{ borderBottom: '1px solid #2d3748' }}>
-                                                    <td style={{ padding: '8px 4px', color: '#ffffff' }}>{poz.nazwa || '-'}</td>
-                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0' }}>{poz.ilosc || '-'}</td>
-                                                    <td style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>{poz.jednostka || '-'}</td>
-                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0' }}>{poz.cena_netto ? `${poz.cena_netto} zł` : '-'}</td>
-                                                    <td style={{ textAlign: 'right', padding: '8px 4px', color: '#e2e8f0', fontWeight: 500 }}>{poz.wartosc_netto ? `${poz.wartosc_netto} zł` : '-'}</td>
-                                                    <td style={{ textAlign: 'center', padding: '8px 4px', color: '#a0aec0' }}>{poz.stawka_vat || '-'}%</td>
+                            <div style={{ marginBottom: '30px' }}>
+                                <div style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase', marginBottom: '8px' }}>Pozycje faktury</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f5f5f5' }}>
+                                            <th style={{ padding: '10px 8px', textAlign: 'left', borderBottom: '2px solid #333', width: '30px' }}>Lp.</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'left', borderBottom: '2px solid #333' }}>Nazwa towaru lub usługi</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'center', borderBottom: '2px solid #333', width: '50px' }}>J.m.</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '2px solid #333', width: '60px' }}>Ilość</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '2px solid #333', width: '90px' }}>Cena netto</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '2px solid #333', width: '100px' }}>Wartość netto</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'center', borderBottom: '2px solid #333', width: '50px' }}>VAT</th>
+                                            <th style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '2px solid #333', width: '100px' }}>Wartość brutto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {inv.pozycje && inv.pozycje.length > 0 ? inv.pozycje.map((poz: any, idx: number) => {
+                                            const netto = parseFloat(poz.wartosc_netto || poz.cena_netto || '0');
+                                            const vatRate = parseFloat(poz.stawka_vat || '23') / 100;
+                                            const brutto = netto * (1 + vatRate);
+                                            return (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={{ padding: '8px', textAlign: 'center' }}>{idx + 1}</td>
+                                                    <td style={{ padding: '8px' }}>{poz.nazwa || '-'}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'center' }}>{poz.jednostka || 'szt.'}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>{poz.ilosc || '1'}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>{poz.cena_netto ? `${parseFloat(poz.cena_netto).toFixed(2)} zł` : '-'}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>{poz.wartosc_netto ? `${parseFloat(poz.wartosc_netto).toFixed(2)} zł` : '-'}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'center' }}>{poz.stawka_vat || '23'}%</td>
+                                                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 500 }}>{brutto.toFixed(2)} zł</td>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                                            );
+                                        }) : (
+                                            <tr>
+                                                <td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                                                    Brak szczegółowych pozycji - kwota całkowita: {formatCurrency(previewInvoice.kwota)}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                             
-                            {/* Numer KSeF */}
-                            <div style={{ padding: '12px 16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ color: '#a0aec0', fontSize: '11px' }}>Numer KSeF</div>
-                                        <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' }}>{previewInvoice.ksef_numer}</div>
+                            {/* Podsumowanie */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '30px' }}>
+                                <div style={{ width: '300px', border: '2px solid #333', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+                                        <span>Razem netto:</span>
+                                        <strong>{inv.pozycje && inv.pozycje.length > 0 
+                                            ? inv.pozycje.reduce((sum: number, p: any) => sum + parseFloat(p.wartosc_netto || '0'), 0).toFixed(2) + ' zł'
+                                            : '-'}</strong>
                                     </div>
-                                    <div style={{ 
-                                        padding: '4px 12px', 
-                                        borderRadius: '4px',
-                                        background: previewInvoice.already_exists ? 'rgba(160, 174, 192, 0.2)' : 'rgba(72, 187, 120, 0.2)',
-                                        color: previewInvoice.already_exists ? '#a0aec0' : '#48bb78',
-                                        fontSize: '12px',
-                                        fontWeight: 500
-                                    }}>
-                                        {previewInvoice.already_exists ? 'Już w bazie' : 'Nowa'}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #ddd' }}>
+                                        <span>VAT:</span>
+                                        <strong>{inv.pozycje && inv.pozycje.length > 0 
+                                            ? inv.pozycje.reduce((sum: number, p: any) => {
+                                                const netto = parseFloat(p.wartosc_netto || '0');
+                                                const vat = netto * (parseFloat(p.stawka_vat || '23') / 100);
+                                                return sum + vat;
+                                              }, 0).toFixed(2) + ' zł'
+                                            : '-'}</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#333', color: '#fff', fontSize: '16px' }}>
+                                        <span>DO ZAPŁATY:</span>
+                                        <strong>{formatCurrency(previewInvoice.kwota)}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Stopka */}
+                            <div style={{ borderTop: '1px solid #ddd', paddingTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', fontSize: '10px', color: '#666' }}>
+                                <div>
+                                    <div style={{ marginBottom: '40px' }}>
+                                        <div>Wystawił(a):</div>
+                                        <div style={{ marginTop: '30px', borderTop: '1px dotted #999', paddingTop: '4px' }}>podpis</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ marginBottom: '40px' }}>
+                                        <div>Odebrał(a):</div>
+                                        <div style={{ marginTop: '30px', borderTop: '1px dotted #999', paddingTop: '4px' }}>podpis</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #333' }}>
                             <button 
                                 className="btn btn-secondary"
                                 onClick={() => {
-                                    const inv = previewInvoice as any;
-                                    const pozycjeHtml = inv.pozycje && inv.pozycje.length > 0 ? `
-                                        <div class="section">
-                                            <h4>Pozycje faktury</h4>
-                                            <table>
-                                                <tr><th>Nazwa</th><th>Ilość</th><th>J.m.</th><th>Cena netto</th><th>Wartość netto</th><th>VAT</th></tr>
-                                                ${inv.pozycje.map((p: any) => `<tr><td>${p.nazwa||'-'}</td><td style="text-align:right">${p.ilosc||'-'}</td><td>${p.jednostka||'-'}</td><td style="text-align:right">${p.cena_netto||'-'} zł</td><td style="text-align:right">${p.wartosc_netto||'-'} zł</td><td>${p.stawka_vat||'-'}%</td></tr>`).join('')}
-                                            </table>
-                                        </div>` : '';
-                                    
-                                    const printWindow = window.open('', '_blank');
-                                    if (printWindow) {
-                                        printWindow.document.write(`
-                                            <html>
-                                            <head>
-                                                <title>Faktura ${previewInvoice.numer}</title>
-                                                <style>
-                                                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-                                                    h2 { margin-bottom: 20px; }
-                                                    h4 { color: #333; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
-                                                    .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                                                    .section { margin-bottom: 20px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
-                                                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-                                                    .label { color: #666; font-size: 12px; margin-bottom: 4px; }
-                                                    .value { font-weight: 600; color: #333; }
-                                                    .amount { color: #28a745; font-size: 1.5rem; font-weight: bold; }
-                                                    .ksef-num { font-family: monospace; font-size: 11px; word-break: break-all; color: #666; }
-                                                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                                                    th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
-                                                    th { background: #f5f5f5; }
-                                                </style>
-                                            </head>
-                                            <body>
-                                                <div class="header">
-                                                    <div>
-                                                        <h2>Faktura ${previewInvoice.numer}</h2>
-                                                        <div class="ksef-num">KSeF: ${previewInvoice.ksef_numer}</div>
-                                                    </div>
-                                                    <div style="text-align: right;">
-                                                        <div class="label">Kwota brutto</div>
-                                                        <div class="amount">${previewInvoice.kwota.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'})}</div>
-                                                    </div>
-                                                </div>
-                                                <div class="section">
-                                                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                                                        <div><div class="label">Data wystawienia</div><div class="value">${previewInvoice.data}</div></div>
-                                                        <div><div class="label">Data sprzedaży</div><div class="value">${inv.data_sprzedazy || '-'}</div></div>
-                                                        <div><div class="label">Termin płatności</div><div class="value">${inv.termin_platnosci || '-'}</div></div>
-                                                        <div><div class="label">Forma płatności</div><div class="value">${inv.forma_platnosci || '-'}</div></div>
-                                                    </div>
-                                                </div>
-                                                <div class="grid">
-                                                    <div class="section">
-                                                        <h4>Sprzedawca</h4>
-                                                        <div class="value">${previewInvoice.dostawca}</div>
-                                                        <div>NIP: ${inv.dostawca_nip || '-'}</div>
-                                                        <div style="font-size: 12px; color: #666;">${inv.dostawca_adres || ''}</div>
-                                                    </div>
-                                                    <div class="section">
-                                                        <h4>Nabywca</h4>
-                                                        <div class="value">${inv.nabywca || '-'}</div>
-                                                        <div>NIP: ${inv.nabywca_nip || '-'}</div>
-                                                    </div>
-                                                </div>
-                                                ${pozycjeHtml}
-                                            </body>
-                                            </html>
-                                        `);
-                                        printWindow.document.close();
-                                        printWindow.print();
+                                    const printContent = document.getElementById('ksef-invoice-print');
+                                    if (printContent) {
+                                        const printWindow = window.open('', '_blank');
+                                        if (printWindow) {
+                                            printWindow.document.write(`
+                                                <!DOCTYPE html>
+                                                <html>
+                                                <head>
+                                                    <title>Faktura ${previewInvoice.numer}</title>
+                                                    <style>
+                                                        @page { size: A4; margin: 15mm; }
+                                                        body { margin: 0; padding: 0; }
+                                                    </style>
+                                                </head>
+                                                <body>${printContent.outerHTML}</body>
+                                                </html>
+                                            `);
+                                            printWindow.document.close();
+                                            setTimeout(() => printWindow.print(), 250);
+                                        }
                                     }
                                 }}
                             >
@@ -769,7 +765,7 @@ const KSeF: React.FC = () => {
                                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                                     <rect x="6" y="14" width="12" height="8" />
                                 </svg>
-                                Drukuj
+                                Drukuj fakturę
                             </button>
                             <button className="btn btn-primary" onClick={() => setPreviewInvoice(null)}>
                                 Zamknij
@@ -777,17 +773,8 @@ const KSeF: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
-                                </svg>
-                                Drukuj
-                            </button>
-                            <button className="btn btn-primary" onClick={() => setPreviewInvoice(null)}>
-                                Zamknij
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                );
+            })()}
 
         </div>
     );

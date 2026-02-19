@@ -377,6 +377,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         
         imported_count = 0
         skipped_count = 0
+        today = date.today()
         
         for inv_data in invoices_data:
             # Sprawdź czy faktura już istnieje
@@ -384,14 +385,35 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 skipped_count += 1
                 continue
             
+            # Określ termin płatności
+            termin_str = inv_data.get('termin_platnosci', inv_data['data'])
+            if isinstance(termin_str, str):
+                try:
+                    termin = date.fromisoformat(termin_str)
+                except ValueError:
+                    termin = date.fromisoformat(inv_data['data'])
+            else:
+                termin = termin_str if termin_str else date.fromisoformat(inv_data['data'])
+            
+            # Określ status - zapłacone jeśli:
+            # - termin płatności to dziś lub jutro (<=1 dzień)
+            # - forma płatności to gotówka
+            forma_platnosci = inv_data.get('forma_platnosci', '').lower()
+            days_until_due = (termin - today).days
+            
+            if days_until_due <= 1 or 'gotówka' in forma_platnosci or 'gotowka' in forma_platnosci:
+                invoice_status = 'zaplacona'
+            else:
+                invoice_status = 'niezaplacona'
+            
             # Utwórz fakturę
             Invoice.objects.create(
                 numer=inv_data['numer'],
                 data=inv_data['data'],
                 kwota=inv_data['kwota'],
                 dostawca=inv_data['dostawca'],
-                termin_platnosci=inv_data.get('termin_platnosci', inv_data['data']),
-                status='niezaplacona',
+                termin_platnosci=termin,
+                status=invoice_status,
                 ksef_numer=inv_data['ksef_numer'],
             )
             imported_count += 1
