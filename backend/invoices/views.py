@@ -137,13 +137,19 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         try:
             settings = Settings.objects.first()
             
+            # Wyczyść NIP 
+            raw_nip = settings.firma_nip if settings else None
+            clean_nip = raw_nip.replace('-', '').replace(' ', '').strip() if raw_nip else None
+            
             diag = {
                 'ksef2_available': KSEF2_AVAILABLE,
                 'settings_exists': settings is not None,
                 'has_token': bool(settings and settings.ksef_token),
                 'has_nip': bool(settings and settings.firma_nip),
                 'environment': settings.ksef_environment if settings else None,
-                'nip': settings.firma_nip if settings else None,
+                'nip_raw': raw_nip,
+                'nip_clean': clean_nip,
+                'nip_length': len(clean_nip) if clean_nip else 0,
                 'token_length': len(settings.ksef_token) if settings and settings.ksef_token else 0,
                 'encryption_key_set': bool(getattr(django_settings, 'ENCRYPTION_KEY', None) or os.environ.get('ENCRYPTION_KEY')),
             }
@@ -154,9 +160,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 diag['encrypted_token_starts'] = encrypted_token[:30] + '...' if len(encrypted_token) > 30 else encrypted_token
                 
                 token = decrypt_token(encrypted_token)
+                clean_token = token.strip().replace('\n', '').replace('\r', '').replace(' ', '')
                 diag['decrypted_token_length'] = len(token)
+                diag['clean_token_length'] = len(clean_token)
                 diag['decryption_worked'] = token != encrypted_token
-                diag['token_starts_with'] = token[:30] + '...' if len(token) > 30 else token
+                diag['token_starts_with'] = clean_token[:30] + '...' if len(clean_token) > 30 else clean_token
+                diag['token_has_whitespace'] = token != clean_token
                 
                 # Spróbuj autoryzacji
                 service = KSeFService(token, settings.firma_nip, settings.ksef_environment)

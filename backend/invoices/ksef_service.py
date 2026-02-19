@@ -83,14 +83,20 @@ class KSeFService:
         """Autoryzacja z użyciem biblioteki ksef2."""
         try:
             env = get_environment(self.environment)
-            logger.info(f"KSeF auth: env={self.environment}, env_obj={env}, nip={self.nip}, token_len={len(self.token)}")
+            
+            # Wyczyść NIP - usuń myślniki i spacje 
+            clean_nip = self.nip.replace('-', '').replace(' ', '').strip()
+            # Wyczyść token - usuń whitespace i newlines
+            clean_token = self.token.strip().replace('\n', '').replace('\r', '').replace(' ', '')
+            
+            logger.info(f"KSeF auth: env={self.environment}, env_obj={env}, nip={clean_nip} (len={len(clean_nip)}), token_len={len(clean_token)}, token_first10={clean_token[:10]}...")
             
             self._client = Client(env)
             
             # Token authentication
             self._auth = self._client.auth.authenticate_token(
-                ksef_token=self.token,
-                nip=self.nip
+                ksef_token=clean_token,
+                nip=clean_nip
             )
             
             self.access_token = self._auth.access_token
