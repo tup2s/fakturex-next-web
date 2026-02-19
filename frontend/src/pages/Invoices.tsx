@@ -508,15 +508,6 @@ const Invoices: React.FC = () => {
             <div className="card">
                 <div className="table-container">
                     <table className={`table${compactMode ? ' compact' : ''}`}>
-                        <colgroup>
-                            <col style={{ width: '140px' }} />
-                            <col style={{ width: '90px' }} />
-                            <col />
-                            <col style={{ width: '140px' }} />
-                            <col style={{ width: '100px' }} />
-                            <col style={{ width: '110px' }} />
-                            <col style={{ width: '90px' }} />
-                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Numer</th>
@@ -594,14 +585,16 @@ const Invoices: React.FC = () => {
                                                     onClick={(e) => { e.stopPropagation(); handleOpenModal(invoice); }}
                                                     title="Edytuj (E)"
                                                 >
-                                                    Edytuj
+                                                    <span className="btn-icon-only">✏️</span>
+                                                    <span className="btn-text">Edytuj</span>
                                                 </button>
                                                 <button 
                                                     className="btn btn-sm btn-danger"
                                                     onClick={(e) => { e.stopPropagation(); handleDelete(invoice.id); }}
                                                     title="Usuń"
                                                 >
-                                                    Usuń
+                                                    <span className="btn-icon-only">🗑️</span>
+                                                    <span className="btn-text">Usuń</span>
                                                 </button>
                                             </div>
                                         </td>
