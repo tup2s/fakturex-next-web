@@ -200,9 +200,13 @@ class KSeFService:
         Pobierz faktury z KSeF 2.0 za podany okres.
         subject_type: 'SUBJECT1' = wystawione, 'SUBJECT2' = otrzymane (kosztowe)
         """
+        logger.info(f"fetch_invoices: KSEF2_AVAILABLE={KSEF2_AVAILABLE}, _auth={self._auth is not None}, _client={self._client is not None}")
+        
         if KSEF2_AVAILABLE and self._auth:
+            logger.info("fetch_invoices: using ksef2 SDK path")
             return self._fetch_with_ksef2(date_from, date_to, subject_type)
         else:
+            logger.warning(f"fetch_invoices: using fallback path (KSEF2={KSEF2_AVAILABLE}, auth={self._auth})")
             return self._fetch_fallback(date_from, date_to, subject_type)
     
     def _fetch_with_ksef2(
