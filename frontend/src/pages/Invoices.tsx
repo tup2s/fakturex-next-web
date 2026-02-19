@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Invoice, InvoiceFormData, Contractor } from '../types';
 import { 
     fetchInvoices, 
@@ -7,8 +8,7 @@ import {
     updateInvoice, 
     deleteInvoice,
     markInvoicePaid,
-    markInvoiceUnpaid,
-    fetchFromKSeF
+    markInvoiceUnpaid
 } from '../services/api';
 
 const emptyForm: InvoiceFormData = {
@@ -23,6 +23,7 @@ const emptyForm: InvoiceFormData = {
 };
 
 const Invoices: React.FC = () => {
+    const navigate = useNavigate();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [contractors, setContractors] = useState<Contractor[]>([]);
     const [loading, setLoading] = useState(true);
@@ -31,19 +32,8 @@ const Invoices: React.FC = () => {
     const [formData, setFormData] = useState<InvoiceFormData>(emptyForm);
     const [filter, setFilter] = useState<'all' | 'niezaplacona' | 'zaplacona' | 'overdue'>('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [ksefLoading, setKsefLoading] = useState(false);
-    const [ksefMessage, setKsefMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
     const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-    
-    // KSeF modal state
-    const [showKsefModal, setShowKsefModal] = useState(false);
-    const [ksefDateFrom, setKsefDateFrom] = useState(() => {
-        const date = new Date();
-        date.setDate(date.getDate() - 30);
-        return date.toISOString().split('T')[0];
-    });
-    const [ksefDateTo, setKsefDateTo] = useState(() => new Date().toISOString().split('T')[0]);
 
     // Filter and search - must be before keyboard shortcuts useEffect
     const filteredInvoices = useMemo(() => {
@@ -89,7 +79,7 @@ const Invoices: React.FC = () => {
             }
 
             // Nie obsługuj gdy modal jest otwarty
-            if (showModal || previewInvoice || showKsefModal) return;
+            if (showModal || previewInvoice) return;
 
             switch (e.key.toLowerCase()) {
                 case 'n':
@@ -98,9 +88,9 @@ const Invoices: React.FC = () => {
                     handleOpenModal();
                     break;
                 case 'k':
-                    // K - pobierz z KSeF (otwórz modal)
+                    // K - przejdź do KSeF
                     e.preventDefault();
-                    if (!ksefLoading) setShowKsefModal(true);
+                    navigate('/ksef');
                     break;
                 case 'arrowdown':
                 case 'j':
@@ -186,7 +176,7 @@ const Invoices: React.FC = () => {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [showModal, previewInvoice, showKsefModal, selectedIndex, filteredInvoices, ksefLoading]);
+    }, [showModal, previewInvoice, selectedIndex, filteredInvoices, navigate]);
 
     const loadData = async () => {
         try {
@@ -287,31 +277,6 @@ const Invoices: React.FC = () => {
         }
     };
 
-    const handleFetchFromKSeF = async () => {
-        setKsefLoading(true);
-        setKsefMessage(null);
-        setShowKsefModal(false);
-        try {
-            const result = await fetchFromKSeF(ksefDateFrom, ksefDateTo);
-            if (result.error) {
-                setKsefMessage({ type: 'error', text: result.error });
-            } else {
-                setKsefMessage({ 
-                    type: result.imported_count > 0 ? 'success' : 'info', 
-                    text: result.message + (result.info ? ` ${result.info}` : '')
-                });
-                if (result.imported_count > 0) {
-                    loadData();
-                }
-            }
-        } catch (error: any) {
-            const errorMsg = error.response?.data?.error || 'Błąd połączenia z KSeF. Sprawdź konfigurację tokenu i NIP w ustawieniach.';
-            setKsefMessage({ type: 'error', text: errorMsg });
-        } finally {
-            setKsefLoading(false);
-        }
-    };
-
     const handleContractorSelect = (contractorId: string) => {
         if (contractorId) {
             const contractor = contractors.find(c => c.id === parseInt(contractorId));
@@ -350,28 +315,15 @@ const Invoices: React.FC = () => {
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button 
                         className="btn btn-secondary" 
-                        onClick={() => setShowKsefModal(true)}
-                        disabled={ksefLoading}
+                        onClick={() => navigate('/ksef')}
                     >
-                        {ksefLoading ? 'Pobieranie...' : '⬇ Pobierz z KSeF'}
+                        ⇒ KSeF
                     </button>
                     <button className="btn btn-primary" onClick={() => handleOpenModal()}>
                         + Dodaj fakturę
                     </button>
                 </div>
             </div>
-
-            {ksefMessage && (
-                <div className={`alert alert-${ksefMessage.type}`} style={{ marginBottom: '20px' }}>
-                    {ksefMessage.text}
-                    <button 
-                        onClick={() => setKsefMessage(null)} 
-                        style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.2rem' }}
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
 
             {/* Filtry */}
             <div className="card" style={{ marginBottom: '20px' }}>
@@ -719,94 +671,6 @@ const Invoices: React.FC = () => {
                                 }}
                             >
                                 Edytuj
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal KSeF - wybór zakresu dat */}
-            {showKsefModal && (
-                <div className="modal-overlay" onClick={() => setShowKsefModal(false)}>
-                    <div className="modal" style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Pobierz faktury z KSeF</h2>
-                            <button className="modal-close" onClick={() => setShowKsefModal(false)}>&times;</button>
-                        </div>
-                        <div className="modal-body">
-                            <p style={{ marginBottom: '20px', color: 'var(--text-label)' }}>
-                                Wybierz zakres dat, z którego chcesz pobrać faktury kosztowe z Krajowego Systemu e-Faktur.
-                            </p>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label className="form-label">Data od</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={ksefDateFrom}
-                                        onChange={(e) => setKsefDateFrom(e.target.value)}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Data do</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={ksefDateTo}
-                                        onChange={(e) => setKsefDateTo(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-sm btn-secondary"
-                                    onClick={() => {
-                                        const d = new Date();
-                                        d.setDate(d.getDate() - 7);
-                                        setKsefDateFrom(d.toISOString().split('T')[0]);
-                                        setKsefDateTo(new Date().toISOString().split('T')[0]);
-                                    }}
-                                >
-                                    Ostatnie 7 dni
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-sm btn-secondary"
-                                    onClick={() => {
-                                        const d = new Date();
-                                        d.setDate(d.getDate() - 30);
-                                        setKsefDateFrom(d.toISOString().split('T')[0]);
-                                        setKsefDateTo(new Date().toISOString().split('T')[0]);
-                                    }}
-                                >
-                                    Ostatnie 30 dni
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-sm btn-secondary"
-                                    onClick={() => {
-                                        const d = new Date();
-                                        d.setDate(d.getDate() - 90);
-                                        setKsefDateFrom(d.toISOString().split('T')[0]);
-                                        setKsefDateTo(new Date().toISOString().split('T')[0]);
-                                    }}
-                                >
-                                    Ostatnie 90 dni
-                                </button>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={() => setShowKsefModal(false)}>
-                                Anuluj
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn btn-primary" 
-                                onClick={handleFetchFromKSeF}
-                                disabled={ksefLoading}
-                            >
-                                {ksefLoading ? 'Pobieranie...' : 'Pobierz faktury'}
                             </button>
                         </div>
                     </div>

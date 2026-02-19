@@ -6,6 +6,7 @@ import MobileNav from './components/common/MobileNav';
 import Dashboard from './pages/Dashboard';
 import Invoices from './pages/Invoices';
 import Contractors from './pages/Contractors';
+import KSeF from './pages/KSeF';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import useAuth from './hooks/useAuth';
@@ -86,6 +87,11 @@ const App: React.FC = () => {
           <Route path="/contractors" element={
             <PrivateRoute>
               <MainLayout><Contractors /></MainLayout>
+            </PrivateRoute>
+          } />
+          <Route path="/ksef" element={
+            <PrivateRoute>
+              <MainLayout><KSeF /></MainLayout>
             </PrivateRoute>
           } />
           <Route path="/settings" element={
