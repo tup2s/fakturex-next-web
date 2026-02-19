@@ -7,6 +7,7 @@ django.setup()
 
 from django.contrib.auth import get_user_model
 from django.db import connection
+from customers.models import Settings
 
 User = get_user_model()
 
